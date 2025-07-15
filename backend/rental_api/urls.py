@@ -1,27 +1,57 @@
-from django.urls import path
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,     
-    TokenRefreshView          
-)
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
-    UserRegistrationView,     # User signup
-    BikeListView,             # List all available bikes
-    BookingCreateView,        # Create a new booking
-    UserBookingsView,         # List bookings made by the current user
-    ReviewCreateView          # Create a review (optional)
+    UserRegistrationView, UserLoginView, VerifyEmailView,
+    PasswordResetRequestView, SetNewPasswordView, ChangePasswordView,
+    BikeListView, BikeAdminViewSet,
+    BookingCreateView, UserBookingsView, AdminBookingListView, AdminBookingUpdateView,
+    ReviewCreateView, AdminReviewViewSet, AdminReviewDeleteView, CancelBookingView, StartRideView, EndRideView, UpdateProfileView,
+    AdminUserListView, UserReviewDeleteView,
 )
 
+router = DefaultRouter()
+router.register(r'bikes', BikeListView, basename='bike')
+router.register(r'admin/bikes', BikeAdminViewSet, basename='admin-bike')
+router.register(r'admin/reviews', AdminReviewViewSet, basename='admin-reviews')
+
 urlpatterns = [
-
-    # ✅ Authentication endpoints
+    # Auth & User
     path('register/', UserRegistrationView.as_view(), name='register'),
-    path('login/', TokenObtainPairView.as_view(), name='login'),               # JWT login — returns access + refresh token
-    path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),  # Get a new access token using refresh token
+    path('login/', UserLoginView.as_view(), name='login'),
+    path('verify-email/<uidb64>/<token>/', VerifyEmailView.as_view(), name='verify-email'),
 
-    # ✅ Bike rental core features
-    path('bikes/', BikeListView.as_view(), name='bike-list'),                  # Public endpoint — see available bikes
-    path('bookings/create/', BookingCreateView.as_view(), name='create-booking'), # Create a booking (requires login)
-    path('bookings/user/', UserBookingsView.as_view(), name='user-bookings'),  # View current user's bookings (requires login)
-    path('reviews/create/', ReviewCreateView.as_view(), name='create-review'), # Submit a review (requires login)
+    # JWT Token
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # Password
+    path('request-reset/', PasswordResetRequestView.as_view(), name='request-reset'),
+    path('set-new-password/<str:token>/', SetNewPasswordView.as_view(), name='set-new-password'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+
+    # Booking
+    path('book/', BookingCreateView.as_view(), name='book-bike'),
+    path('user/bookings/', UserBookingsView.as_view(), name='user-bookings'),
+    path('admin/bookings/', AdminBookingListView.as_view(), name='admin-booking-list'),
+    path('admin/bookings/<int:booking_id>/update/', AdminBookingUpdateView.as_view(), name='admin-booking-update'),
+    # Booking actions
+    path('booking/<int:booking_id>/cancel/', CancelBookingView.as_view(), name='cancel-booking'),
+    path('booking/<int:booking_id>/start/', StartRideView.as_view(), name='start-ride'),
+    path('booking/<int:booking_id>/end/', EndRideView.as_view(), name='end-ride'),
+
+    # Profile update
+    path('user/update-profile/', UpdateProfileView.as_view(), name='update-profile'),
+
+    # Review
+    path('review/', ReviewCreateView.as_view(), name='submit-review'),
+    path('admin/reviews/<int:review_id>/delete/', AdminReviewDeleteView.as_view(), name='delete-review'),
+    path('review/<int:review_id>/delete/', UserReviewDeleteView.as_view(), name='user-review-delete'),
+
+
+    #Admin User list views
+    path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
+    # DRF Router 
+    path('', include(router.urls)),
 ]
