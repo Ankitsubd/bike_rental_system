@@ -7,6 +7,7 @@ class User(AbstractUser):
     username = models.CharField(max_length=150, unique=True)
     is_customer = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default= False)
     created_at = models.DateTimeField(auto_now_add=True)
     phone = models.CharField(max_length=15, blank=False, null=False, default='N/A')
     address = models.TextField(blank=False, null=False, default= 'N/A')

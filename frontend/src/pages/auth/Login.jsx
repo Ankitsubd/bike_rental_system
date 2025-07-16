@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import useAuth from '../../hooks/useAuth';
+import { jwtDecode } from 'jwt-decode';
 
 const Login = () => {
   const { login } = useAuth();
@@ -9,16 +10,27 @@ const Login = () => {
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const res = await login({ email:form.email, password:form.password});
 
-  const handleSubmit = async e => {
-    e.preventDefault();
-    try {
-      await login(form);
-    } catch (err) {
-      setError('Invalid email or password');
+    if (!res.access || typeof res.access !== 'string') {
+      throw new Error('Invalid access token');
     }
-  };
 
+    const decoded = jwtDecode(res.access);
+    console.log(decoded);
+
+    localStorage.setItem('accessToken', res.access);
+    localStorage.setItem('refreshToken', res.refresh);
+  } catch (err) {
+    console.error("Login error:", err);
+    setError("Invalid email or password");
+  }
+};
+
+  
   return (
     <div className="max-w-md mx-auto mt-20 bg-white p-6 rounded-xl shadow-md">
       <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>

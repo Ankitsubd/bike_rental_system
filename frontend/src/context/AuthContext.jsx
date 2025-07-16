@@ -7,9 +7,9 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
-  // Check token on load
+  // Check token on page load
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
       try {
         const decoded = jwtDecode(token);
@@ -21,14 +21,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = (token) => {
-    localStorage.setItem('access_token', token);
-    const decoded = jwtDecode(token);
-    setUser(decoded);
+  const login = ({ access, refresh }) => {
+    localStorage.setItem('accessToken', access);
+    localStorage.setItem('refreshToken', refresh);
+
+    try {
+      const decoded = jwtDecode(access);
+      setUser(decoded);
+    } catch (e) {
+      console.error('Failed to decode token');
+      setUser(null);
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     setUser(null);
   };
 

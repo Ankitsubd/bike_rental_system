@@ -13,9 +13,11 @@ from django.conf import settings
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from .utils import verify_reset_token
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from .utils import generate_verification_token, generate_reset_token
-from .permissions import IsOwnerOrAdmin, IsAdminUser
+from .permissions import IsOwnerOrAdmin, IsAdminUser, IsVerifiedUser
 from .models import Bike, Booking, Review
 from .serializers import (
     UserSerializer, RegisterSerializer, ChangePasswordSerializer,
@@ -33,8 +35,10 @@ class UserRegistrationView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            token = generate_verification_token(user.email)
-            verification_link = f"http://localhost:8000/api/v1/verify-email/{token}/"
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            # token = generate_verification_token(user.email)
+            token = PasswordResetTokenGenerator().make_token(user)
+            verification_link = f"http://localhost:8000/api/v1/verify-email/{uid}/{token}/"
             send_mail(
                 subject="Verify your Bike Rental Account",
                 message=f"Click here to verify your email: {verification_link}",
@@ -146,7 +150,8 @@ class BikeAdminViewSet(viewsets.ModelViewSet):
 
 
 class BookingCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
+
 
     def post(self, request):
         data = request.data
@@ -229,7 +234,7 @@ class AdminBookingUpdateView(APIView):
 
 
 class ReviewCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
 
     def post(self, request):
         serializer = ReviewSerializer(data=request.data, context={'request': request})
@@ -259,7 +264,8 @@ class AdminReviewDeleteView(APIView):
 
 
 class CancelBookingView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
+
 
     def patch(self, request, booking_id):
         try:
@@ -278,7 +284,8 @@ class CancelBookingView(APIView):
 
 
 class StartRideView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
+
 
     def patch(self, request, booking_id):
         try:
@@ -297,7 +304,8 @@ class StartRideView(APIView):
 
 
 class EndRideView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
+
 
     def patch(self, request, booking_id):
         try:

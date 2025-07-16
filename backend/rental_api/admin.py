@@ -5,7 +5,7 @@ from .models import User, Bike, Booking, Review
 
 class CustomUserAdmin(BaseUserAdmin):
     model = User
-    list_display = ('id', 'username', 'email', 'is_customer', 'is_admin', 'created_at')
+    list_display = ('id', 'username', 'email', 'is_customer', 'is_admin', 'is_verified' ,'created_at')
     list_filter = ('is_admin', 'is_customer')
     fieldsets = (
         (None, {'fields': ('username', 'email', 'password')}),
