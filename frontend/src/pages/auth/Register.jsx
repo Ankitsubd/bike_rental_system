@@ -1,28 +1,34 @@
 import { useState } from 'react';
-import { register as registerAPI } from '../../api/auth';
+import { register } from '../../api/auth';
+import { useNavigate } from 'react-router-dom';
 
 const Register = () => {
   const [form, setForm] = useState({ email: '', password: '', confirmPassword: '' });
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
+
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e)=> {
     e.preventDefault();
+    console.log('registering with:',form)
     if (form.password !== form.confirmPassword) {
       setError("Passwords don't match");
       return;
     }
 
     try {
-      await registerAPI({ email: form.email, password: form.password });
+      await register(form);
       setSuccess('Registration successful! Check your email to verify.');
-      setError('');
+      setForm({email:'', password:''});
+      // navigate('/login');    
     } catch (err) {
-      setError('Registration failed.');
+      console.error("Register error:", err.response?.data || err.message);
+      setError("Registration failed: " + (err.response?.data?.email?.[0] || "Invalid input"));
     }
   };
 
@@ -36,7 +42,7 @@ const Register = () => {
           type="email"
           name="email"
           placeholder="Email"
-          value={form.email}
+          value={form.email ?? ''}
           onChange={handleChange}
           required
           className="w-full p-2 border rounded"
@@ -45,7 +51,7 @@ const Register = () => {
           type="password"
           name="password"
           placeholder="Password"
-          value={form.password}
+          value={form.password ?? ''}
           onChange={handleChange}
           required
           className="w-full p-2 border rounded"
@@ -54,7 +60,7 @@ const Register = () => {
           type="password"
           name="confirmPassword"
           placeholder="Confirm Password"
-          value={form.confirmPassword}
+          value={form.confirmPassword ?? ''}
           onChange={handleChange}
           required
           className="w-full p-2 border rounded"
@@ -63,6 +69,9 @@ const Register = () => {
           Register
         </button>
       </form>
+      <p className='text-sm mt-4 text-center'>
+        Already have an account? <a href='/login' className='text-blue-600 underline'>Login here</a>
+      </p>
     </div>
   );
 };

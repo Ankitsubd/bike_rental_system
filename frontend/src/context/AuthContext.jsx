@@ -15,24 +15,43 @@ export const AuthProvider = ({ children }) => {
         const decoded = jwtDecode(token);
         setUser(decoded);
       } catch (e) {
-        console.error('Invalid token');
+        console.error('Invalid token...');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         setUser(null);
       }
     }
   }, []);
 
-  const login = ({ access, refresh }) => {
-    localStorage.setItem('accessToken', access);
-    localStorage.setItem('refreshToken', refresh);
+  // const login = ({ access, refresh }) => {
+  //   localStorage.setItem('accessToken', access);
+  //   localStorage.setItem('refreshToken', refresh);
 
-    try {
-      const decoded = jwtDecode(access);
-      setUser(decoded);
-    } catch (e) {
-      console.error('Failed to decode token');
-      setUser(null);
-    }
-  };
+  //   try {
+  //     const decoded = jwtDecode(access);
+  //     setUser(decoded);
+  //   } catch (e) {
+  //     console.error('Failed to decode token');
+  //     setUser(null);
+  //   }
+const login = ({ access, refresh }) => {
+  if (!access || !refresh) {
+    console.error('Missing access or refresh token');
+    return;
+  }
+
+  localStorage.setItem('accessToken', access);
+  localStorage.setItem('refreshToken', refresh);
+
+  try {
+    const decoded = jwtDecode(access);
+    setUser(decoded);
+  } catch (e) {
+    console.error('Failed to decode token:', e.message);
+    setUser(null);
+  }
+};
+
 
   const logout = () => {
     localStorage.removeItem('accessToken');

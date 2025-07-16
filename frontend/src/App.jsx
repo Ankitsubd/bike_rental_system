@@ -17,6 +17,7 @@ import Dashboard from './pages/admin/Dashboard';
 import ManageBikes from './pages/admin/ManageBikes';
 import ManageBookings from './pages/admin/ManageBookings';
 import ManageReviews from './pages/admin/ManageReviews';
+import ResetPassword from './pages/auth/ResetPassword';
 const App = () => {
   return (
     <AuthProvider>
@@ -30,6 +31,7 @@ const App = () => {
             <Route path='/bikes/:id' element={<BikeDetail/>}/>
             <Route path='/login' element={<Login/>}/>
             <Route path='/register' element={<Register/>}/>
+            <Route path='/reset-password' element={<ResetPassword/>}/>
 
             {/**User protected Routes */}
             <Route
@@ -47,11 +49,11 @@ const App = () => {
               <ProtectedRoute role="is_admin">
                 <AdminLayout>
                   <Routes>
-                    <Route path='dashboard' element={<Dashboard/>}/>
-                    <Route path='bikes' element={<ManageBikes/>}/>
-                    <Route path='bookings' element={<ManageBookings/>}/>
-                    <Route path='reviews' element={<ManageReviews/>}/>
-                    <Route path='' element={<Dashboard/>}/>
+                    <Route path='/dashboard' element={<Dashboard/>}/>
+                    <Route path='/bikes' element={<ManageBikes/>}/>
+                    <Route path='/bookings' element={<ManageBookings/>}/>
+                    <Route path='/reviews' element={<ManageReviews/>}/>
+                    <Route path='/' element={<Dashboard/>}/>
                   </Routes>
                 </AdminLayout>
               </ProtectedRoute>

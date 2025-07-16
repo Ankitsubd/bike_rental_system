@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import useAuth from '../../hooks/useAuth';
-import { jwtDecode } from 'jwt-decode';
+import useAuth from '../../hooks/useAuth.js';
+import { loginAPI } from '../../api/auth.js';
 
 const Login = () => {
   const { login } = useAuth();
@@ -12,20 +12,13 @@ const Login = () => {
   };
 const handleSubmit = async (e) => {
   e.preventDefault();
+  setError('login failed');
   try {
-    const res = await login({ email:form.email, password:form.password});
-
-    if (!res.access || typeof res.access !== 'string') {
-      throw new Error('Invalid access token');
-    }
-
-    const decoded = jwtDecode(res.access);
-    console.log(decoded);
-
-    localStorage.setItem('accessToken', res.access);
-    localStorage.setItem('refreshToken', res.refresh);
+    const res = await loginAPI(form);
+    login(res);
+   console.log('login successful!')
   } catch (err) {
-    console.error("Login error:", err);
+    console.error("Login error:", err.response?.data || err.message);
     setError("Invalid email or password");
   }
 };
@@ -40,7 +33,7 @@ const handleSubmit = async (e) => {
           type="email"
           name="email"
           placeholder="Email"
-          value={form.email}
+          value={form.email?? ''}
           onChange={handleChange}
           required
           className="w-full p-2 border rounded"
@@ -49,7 +42,7 @@ const handleSubmit = async (e) => {
           type="password"
           name="password"
           placeholder="Password"
-          value={form.password}
+          value={form.password ?? '' }
           onChange={handleChange}
           required
           className="w-full p-2 border rounded"
@@ -59,7 +52,7 @@ const handleSubmit = async (e) => {
         </button>
       </form>
       <p className="text-sm mt-4 text-center">
-        Forgot password? <a href="/forgot-password" className="text-blue-600 underline">Reset here</a>
+        Forgot password? <a href="/reset-password" className="text-blue-600 underline">Reset here</a>
       </p>
     </div>
   );

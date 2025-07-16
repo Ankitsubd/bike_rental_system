@@ -10,7 +10,7 @@ const BikeDetail = () => {
   const [bike, setBike] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bookingData, setBookingData] = useState({ start_date: '', end_date: '' });
+  const [bookingData, setBookingData] = useState({ start_time: '', end_time: '' });
   const [message, setMessage] = useState('');
   const [price, setPrice] = useState(0);
 
@@ -26,20 +26,20 @@ const BikeDetail = () => {
 
   const calculatePrice = (start, end) => {
     if (!start || !end) return 0;
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    if (endDate < startDate) return 0;
-    const diffMs = endDate - startDate;
+    const startTime = new Date(start);
+    const endTime = new Date(end);
+    if (endTime < startTime) return 0;
+    const diffMs = endTime - startTime;
     const diffHours = diffMs / (1000 * 60 * 60);
     return Math.ceil(diffHours) * bike.price_per_hour;
   };
 
   const handleChange = e => {
-    const {name, value} = e.target;
-    const newBookingData = {...bookingData, [name]: value};
+    const { name, value } = e.target;
+    const newBookingData = { ...bookingData, [name]: value };
     setBookingData(newBookingData);
-    if(name === 'start_date'|| name=== 'end_date'){
-        setPrice(calculatePrice(newBookingData.start_date, newBookingData.end_date))
+    if (name === 'start_time' || name === 'end_time') {
+      setPrice(calculatePrice(newBookingData.start_time, newBookingData.end_time));
     }
   };
 
@@ -51,22 +51,23 @@ const BikeDetail = () => {
       return;
     }
 
-    if(!bookingData.start_date || !bookingData.end_date){
-        setMessage('Please select both start and end dates.');
+    if (!bookingData.start_time || !bookingData.end_time) {
+      setMessage('Please select both start and end times.');
+      return;
     }
 
-    const startDate = new Date(bookingData.start_date);
-    const endDate = new Date(bookingData.end_date);
-    if(endDate < startDate){
-        setMessage('End date cannot be before start date.');
-        return;
+    const startDate = new Date(bookingData.start_time);
+    const endDate = new Date(bookingData.end_time);
+    if (endDate < startDate) {
+      setMessage('End time cannot be before start time.');
+      return;
     }
 
     try {
-      await api.post('bookings/', { bike: id, ...bookingData });
+      await api.post('book/', { bike: id, ...bookingData });
       setMessage('Booking successful!');
     } catch (err) {
-      setMessage('Booking failed: ' + (err.response?.data?.detail || 'Try again later.'));
+      setMessage('Booking failed: ' + (err.response?.data?.error || 'Try again later.'));
     }
   };
 
@@ -85,32 +86,32 @@ const BikeDetail = () => {
       <form onSubmit={handleBooking} className="max-w-md space-y-4">
         <h2 className="text-xl font-semibold">Book this Bike</h2>
         <label className="block">
-          Start Date:
+          Start Time:
           <input
             type="datetime-local"
-            name="start_date"
-            value={bookingData.start_date}
+            name="start_time"
+            value={bookingData.start_time}
             onChange={handleChange}
             required
             className="w-full border p-2 rounded mt-1"
-            min={new Date().toISOString().slice(0,16)}
+            min={new Date().toISOString().slice(0, 16)}
           />
         </label>
         <label className="block">
-          End Date:
+          End Time:
           <input
-            type="datetime_local"
-            name="end_date"
-            value={bookingData.end_date}
+            type="datetime-local"
+            name="end_time"
+            value={bookingData.end_time}
             onChange={handleChange}
             required
             className="w-full border p-2 rounded mt-1"
-            min={bookingData.start_date || new Date().toISOString().slice(0.16)}
+            min={bookingData.start_time || new Date().toISOString().slice(0, 16)}
           />
         </label>
 
-        <p className='text-lg font-semibold'>
-            Total Price: <span className='text-blue-500'> Rs. {price}</span>
+        <p className="text-lg font-semibold">
+          Total Price: <span className="text-blue-500">Rs. {price}</span>
         </p>
         <button
           type="submit"

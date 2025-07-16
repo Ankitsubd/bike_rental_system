@@ -8,11 +8,11 @@ const ResetPassword = () => {
   const [form, setForm] = useState({ password: '', confirmPassword: '' });
   const [message, setMessage] = useState('');
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
       setMessage("Passwords don't match.");

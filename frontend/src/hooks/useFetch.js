@@ -30,7 +30,7 @@ const useFetch = (endpoint, deps = []) => {
     return () => {
       isMounted = false;
     };
-  }, deps); // re-run fetch on any dependency change
+  }, deps); 
 
   return { data, loading, error };
 };
