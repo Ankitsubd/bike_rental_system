@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
 import useAuth from '../../hooks/useAuth';
-
+import BikeCard from '../../components/BikeCard';
 const BikeDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
@@ -79,47 +79,67 @@ const BikeDetail = () => {
     <div className="max-w-4xl mx-auto p-4">
       <img src={bike.image} alt={bike.name} className="w-full h-64 object-cover rounded-lg mb-4" />
       <h1 className="text-3xl font-bold mb-2">{bike.name}</h1>
+      <p className={`inline-block px-3 py-1 rounded-full text-sm font-semibold text-white mb-4 ${
+          bike.status === 'available' ? 'bg-green-500' :
+          bike.status === 'booked' ? 'bg-yellow-600' :
+          bike.status === 'in_use' ? 'bg-orange-500' :
+          bike.status === 'returned' ? 'bg-blue-400' :
+          bike.status === 'maintenance' ? 'bg-red-500' :
+          bike.status === 'offline' ? 'bg-gray-500' :
+          'bg-gray-400'
+        }`}>
+              {bike.status.replace('_', ' ')}
+      </p>
+
       <p className="text-gray-700 mb-2">{bike.type} - {bike.model}</p>
       <p className="font-semibold text-blue-600 mb-4">Rs. {bike.price_per_hour} / hour</p>
       <p className="mb-6">{bike.description}</p>
 
-      <form onSubmit={handleBooking} className="max-w-md space-y-4">
-        <h2 className="text-xl font-semibold">Book this Bike</h2>
-        <label className="block">
-          Start Time:
-          <input
-            type="datetime-local"
-            name="start_time"
-            value={bookingData.start_time}
-            onChange={handleChange}
-            required
-            className="w-full border p-2 rounded mt-1"
-            min={new Date().toISOString().slice(0, 16)}
-          />
-        </label>
-        <label className="block">
-          End Time:
-          <input
-            type="datetime-local"
-            name="end_time"
-            value={bookingData.end_time}
-            onChange={handleChange}
-            required
-            className="w-full border p-2 rounded mt-1"
-            min={bookingData.start_time || new Date().toISOString().slice(0, 16)}
-          />
-        </label>
+     {bike.status === 'available' ? (
+  <form onSubmit={handleBooking} className="max-w-md space-y-4">
+    <h2 className="text-xl font-semibold">Book this Bike</h2>
+    <label className="block">
+      Start Time:
+      <input
+        type="datetime-local"
+        name="start_time"
+        value={bookingData.start_time}
+        onChange={handleChange}
+        required
+        className="w-full border p-2 rounded mt-1"
+        min={new Date().toISOString().slice(0, 16)}
+      />
+    </label>
+    <label className="block">
+      End Time:
+      <input
+        type="datetime-local"
+        name="end_time"
+        value={bookingData.end_time}
+        onChange={handleChange}
+        required
+        className="w-full border p-2 rounded mt-1"
+        min={bookingData.start_time || new Date().toISOString().slice(0, 16)}
+      />
+    </label>
 
-        <p className="text-lg font-semibold">
-          Total Price: <span className="text-blue-500">Rs. {price}</span>
-        </p>
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Book Now
-        </button>
-      </form>
+    <p className="text-lg font-semibold">
+      Total Price: <span className="text-blue-500">Rs. {price}</span>
+    </p>
+    <button
+      type="submit"
+      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+    >
+      Book Now
+    </button>
+  </form>
+) : (
+  <div className="max-w-md p-4 border border-yellow-300 bg-yellow-50 rounded shadow">
+    <p className="text-xl font-semibold text-red-600 mb-2">This bike is currently <strong>{bike.status.replace('_', ' ')}</strong>.</p>
+    <p className="text-gray-700">Booking is not available until the bike becomes available.</p>
+  </div>
+)}
+
 
       {message && (
         <p className={`mt-4 font-semibold ${message.includes('successful') ? 'text-green-600' : 'text-red-600'}`}>

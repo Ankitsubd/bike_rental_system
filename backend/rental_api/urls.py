@@ -8,7 +8,8 @@ from .views import (
     BikeListView, BikeAdminViewSet,
     BookingCreateView, UserBookingsView, AdminBookingListView, AdminBookingUpdateView,
     ReviewCreateView, AdminReviewViewSet, AdminReviewDeleteView, CancelBookingView, StartRideView, EndRideView, UpdateProfileView,
-    AdminUserListView, UserReviewDeleteView,
+    AdminUserListView, UserReviewDeleteView,AdminUserDetailView,AdminUserDeleteView,AdminUserRoleUpdateView,
+    AdminBookingDeleteView, AdminDashboardStatsView
 )
 
 router = DefaultRouter()
@@ -27,7 +28,7 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Password
-    path('request-reset/', PasswordResetRequestView.as_view(), name='request-reset'),
+    path('reset-password/', PasswordResetRequestView.as_view(), name='request-reset'),
     path('set-new-password/<str:token>/', SetNewPasswordView.as_view(), name='set-new-password'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
 
@@ -52,6 +53,19 @@ urlpatterns = [
 
     #Admin User list views
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
+    
+    # Admin User Management
+    path('admin/users/<int:user_id>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
+    path('admin/users/<int:user_id>/delete/', AdminUserDeleteView.as_view(), name='admin-user-delete'),
+    path('admin/users/<int:user_id>/change-role/', AdminUserRoleUpdateView.as_view(), name='admin-user-role'),
+
+    # Admin Booking Management
+    path('admin/bookings/<int:booking_id>/delete/', AdminBookingDeleteView.as_view(), name='admin-booking-delete'),
+
+    # Admin Dashboard Stats
+    path('admin/stats/', AdminDashboardStatsView.as_view(), name='admin-dashboard-stats'),
+
+    
     # DRF Router 
     path('', include(router.urls)),
 ]

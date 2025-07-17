@@ -8,7 +8,7 @@ const Bookings = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('bookings/my/')
+    api.get('user/bookings/')
       .then(res => {
         setBookings(res.data);
         setLoading(false);
@@ -25,12 +25,13 @@ const Bookings = () => {
   if (bookings.length === 0) return <p>You have no bookings yet.</p>;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-2">
       <h1 className="text-3xl font-bold mb-6">My Bookings</h1>
       <table className="w-full border-collapse border border-gray-300 rounded">
         <thead>
           <tr className="bg-gray-100">
             <th className="border border-gray-300 p-2">Bike</th>
+            {/* <th className='border border-gray-300 p-2'>Image</th> */}
             <th className="border border-gray-300 p-2">Start Date</th>
             <th className="border border-gray-300 p-2">End Date</th>
             <th className="border border-gray-300 p-2">Status</th>
@@ -39,9 +40,10 @@ const Bookings = () => {
         <tbody>
           {bookings.map((booking) => (
             <tr key={booking.id} className="hover:bg-gray-50">
-              <td className="border border-gray-300 p-2">{booking.bike.name}</td>
-              <td className="border border-gray-300 p-2">{booking.start_date}</td>
-              <td className="border border-gray-300 p-2">{booking.end_date}</td>
+              <td className="border border-gray-300 p-2">{booking.bike}</td>
+              {/* <td className='border border-gray-300 p-2'>{booking.image}</td> */}
+              <td className="border border-gray-300 p-2">{new Date(booking.start_time).toLocaleString()}</td>
+              <td className="border border-gray-300 p-2">{new Date(booking.end_time).toLocaleString()}</td>
               <td className="border border-gray-300 p-2">{booking.status}</td>
             </tr>
           ))}
