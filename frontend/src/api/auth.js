@@ -2,7 +2,7 @@ import api from "./axios";
 
 export const login = async (data) => {
   try {
-    const res = await api.post("token/", data);
+    const res = await api.post("http://localhost:8000/api/token/", data);
     console.log("Login response:", res.data); // ✅ Add this line
 
     const access = res.data.access;
@@ -27,7 +27,7 @@ export const login = async (data) => {
 
 
 // Register with only email and password
-export const register = (data) => api.post('register/', data);
+export const register = (data) => api.post('http://localhost:8000/api/v1/register/', data);
 
 // Email verification via uid/token
 export const verifyEmail = (uid, token) => api.get(`verify-email/${uid}/${token}/`);
@@ -46,3 +46,13 @@ export const logout = () => {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
 };
+
+export const getUserProfile = async()=>{
+  const res = await api.get('/users/me/');
+  return res.data;
+};
+
+export const updateUserProfile = async(data)=>{
+  const res = await api.put('/users/me/',data);
+  return res.data
+}

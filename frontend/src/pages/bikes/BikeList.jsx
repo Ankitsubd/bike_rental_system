@@ -2,34 +2,22 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
+import {debounce, sortBy, update } from 'lodash';
+import BikeCard from '../../components/BikeCard';
 
 const BikeList = () => {
   const [bikes, setBikes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [totalPages, setTotalPages] = useState(1);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parseInt(searchParams.get('page')) || 1;
   const typeFilter = searchParams.get('type') || '';
-  const modelFilter = searchParams.get('model')||'';
-
-  const [totalPages, setTotalPages] = useState(1);
-
- useEffect(() => {
-    setLoading(true);
-    let query = `bikes/?page=${page}`;
-    if (typeFilter) query += `&type=${typeFilter}`;
-    if (modelFilter) query += `&model=${modelFilter}`;
-
-    api.get(query)
-      .then(res => {
-        setBikes(res.data.results);
-        setTotalPages(Math.ceil(res.data.count / 10)); // assuming 10 per page
-        setError('');
-      })
-      .catch(() => setError('Failed to load bikes'))
-      .finally(() => setLoading(false));
-  }, [page, typeFilter, modelFilter]);
+  const searchKeyword = searchParams.get('search')||'';
+  const debouncedSearch = debounce((value)=>{
+   updateFilter('search',value);
+  },400);
 
   const updateFilter = (key, value) => {
     const newParams = new URLSearchParams(searchParams);
@@ -38,10 +26,37 @@ const BikeList = () => {
     } else {
       newParams.delete(key);
     }
-    newParams.set('page', 1); // reset page on filter change
+    newParams.set('page', 1); 
     setSearchParams(newParams);
   };
 
+  const clearFilters = ()=>{
+    setSearchParams(newParams);
+  }
+ 
+
+ useEffect(() => {
+  const fetchData =async()=>{
+    try {
+       setLoading(true);
+        let query = `bikes/?page=${page}`;
+        if (typeFilter) query += `&type=${typeFilter}`;
+        if (searchKeyword) query += `&search=${searchKeyword}`;
+
+        const res = await api.get(query);
+        setBikes(res.data.results || []);
+        setTotalPages(Math.ceil(res.data.count / 10));
+        setError('');
+    } catch (error) {
+      console.error(err);
+        setError('Failed to load bikes');
+    }finally{
+      setLoading(false);
+    }
+  };
+  fetchData();
+},[page,typeFilter,searchKeyword]);
+    
    const paginationButtons = [];
   for (let i = 1; i <= totalPages; i++) {
     paginationButtons.push(
@@ -78,36 +93,54 @@ const BikeList = () => {
           <option value="electric">Electric</option>
           
         </select>
-
-        <input
-          type="text"
-          placeholder="Search Model"
-          value={modelFilter}
-          onChange={e => updateFilter('model', e.target.value)}
-          className="border p-2 rounded"
-        />
+        {/**Search */}
+       <input
+       type='text'
+       placeholder='Search by model, name...'
+       defaultValue={searchKeyword}
+       onChange={e => debouncedSearch(e.target.value)}
+       className='border p-2 rounded'
+       />
+      {/**Sort */}
+      <select
+      value={sortBy}
+      onChange={e=> updateFilter('sort', e.target.value)}
+      className='border p-2 rounded'
+      >
+        <option value="">Sort By</option>
+        <option value="price_per_hour">Price: Low to High</option>
+        <option value="-price_per_hour">Price: High to Low</option>
+        <option value="rating">Rating: Low to High</option>
+        <option value="-rating">Rating: High to Low</option>
+      </select>
+       {/**Clear filters */}
+       {(typeFilter || searchKeyword) && (
+        <button
+      onClick={clearFilters}
+      className='bg-red-100 text-red-500 px-3 py-2 rounded'
+      >
+        Clear Filters
+      </button>
+    )}
       </div>
 
       {/* Bike grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {bikes.map(bike => (
-          <Link
-            key={bike.id}
-            to={`/bikes/${bike.id}`}
-            className="block border rounded-lg shadow hover:shadow-lg transition p-4 bg-white"
-          >
-            <img src={bike.image} alt={bike.name} className="w-full h-48 object-cover rounded-md mb-3" />
-            <h2 className="text-xl font-semibold">{bike.name}</h2>
-            <p className="text-gray-600">{bike.type} - {bike.model}</p>
-            <p className="text-blue-600 font-bold mt-1">Rs. {bike.price_per_hour} / hour</p>
-          </Link>
-        ))}
-      </div>
+      {bikes.length === 0 ? (
+        <p className='text-gray-500'>No bikes found.</p>
+      ): (
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
+          {bikes.map(bike => (
+            <BikeCard key= {bike.id} bike={bike}/>
+          ))}
+          </div>
+      )}
 
       {/* Pagination */}
+      {totalPages > 1 && (
       <div className="mt-8 flex justify-center gap-2">
         {paginationButtons}
       </div>
+      )}
     </div>
   );
 };
