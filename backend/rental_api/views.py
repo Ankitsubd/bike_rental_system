@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.views import APIView
-from rest_framework.generics import UpdateAPIView
+from rest_framework.generics import UpdateAPIView, ListAPIView
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -83,7 +83,8 @@ class PasswordResetRequestView(APIView):
             return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
         token = generate_reset_token(user.email)
-        reset_link = f"http://localhost:8000/api/v1/set-new-password/{token}/"
+        reset_link = f"http://localhost:5173/reset-password?token={token}"
+
         send_mail(
             subject="Reset your Bike Rental password",
             message=f"Click the link below to reset your password:\n{reset_link}",
@@ -94,25 +95,34 @@ class PasswordResetRequestView(APIView):
         return Response({"message": "Password reset link sent to your email."}, status=status.HTTP_200_OK)
 
 
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny
 class SetNewPasswordView(APIView):
+    permission_classes= [AllowAny]
     def patch(self, request, token):
+        print("Token received:",token)
+        print("Data received:",request.data)
         email = verify_reset_token(token)
+        print("decoded email from token:", email)
         if not email:
-            return Response({'error': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid or expired token.'}, status=400)
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'User not found.'}, status=404)
 
         serializer = SetNewPasswordSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except ValidationError as e:
+            print("Validation error:", e.detail)
+            return Response({'error': 'Invalid input.', 'details': e.detail}, status=400)
 
         user.set_password(serializer.validated_data['new_password'])
         user.save()
 
-        return Response({'message': 'Password has been reset successfully'}, status=status.HTTP_200_OK)
-
+        return Response({'message': 'Password has been reset successfully'}, status=200)
 
 
 class ChangePasswordView(UpdateAPIView):
@@ -135,11 +145,13 @@ class ChangePasswordView(UpdateAPIView):
 
 
 class BikeListView(viewsets.ReadOnlyModelViewSet):
-    queryset = Bike.objects.filter(status='available')
+    queryset = Bike.objects.all()
     serializer_class = BikeSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = {'price_per_hour': ['gte', 'lte']}
+    filterset_fields = {'status': ['exact'],
+                        'price_per_hour': ['gte', 'lte']
+                        }
     search_fields = ['name', 'model', 'brand', 'bike_type']
 
 
@@ -208,13 +220,15 @@ class UserBookingsView(APIView):
         return Response(serializer.data)
 
 
-class AdminBookingListView(APIView):
+class AdminBookingListView(ListAPIView):
+    queryset = Booking.objects.all()
+    serializer_class = BookingSerializer
     permission_classes = [IsAdminUser]
-
-    def get(self, request):
-        bookings = Booking.objects.all()
-        serializer = BookingSerializer(bookings, many=True)
-        return Response(serializer.data)
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'bike__name', 'user__username']
+    search_fields = ['user__username', 'bike__name']
+    ordering_fields = ['created_at', 'start_time', 'end_time', 'total_price']
+    ordering = ['-created_at']
 
 
 class AdminBookingUpdateView(APIView):
@@ -249,6 +263,11 @@ class AdminReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['rating', 'bike__name', 'user__username']
+    search_fields = ['user__username', 'bike__name', 'comment']
+    ordering_fields = ['created_at', 'rating']
+    ordering = ['-created_at']
 
 
 class AdminReviewDeleteView(APIView):
@@ -368,3 +387,74 @@ class UserReviewDeleteView(APIView):
         review.delete()
         return Response({'message': 'Review deleted successfully'}, status=status.HTTP_200_OK)
 
+# Admin: Delete User
+class AdminUserDeleteView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def delete(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            user.delete()
+            return Response({'message': 'User deleted successfully'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+# Admin: Change User Role
+class AdminUserRoleUpdateView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, user_id):
+        is_admin = request.data.get("is_admin")
+        is_customer = request.data.get("is_customer")
+
+        try:
+            user = User.objects.get(id=user_id)
+            if is_admin is not None:
+                user.is_admin = is_admin
+            if is_customer is not None:
+                user.is_customer = is_customer
+            user.save()
+            return Response({'message': 'User role updated successfully'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+# Admin: View Single User Detail
+class AdminUserDetailView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            serializer = UserSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+# Admin: Delete Booking
+class AdminBookingDeleteView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def delete(self, request, booking_id):
+        try:
+            booking = Booking.objects.get(id=booking_id)
+            booking.delete()
+            return Response({'message': 'Booking deleted successfully'}, status=status.HTTP_200_OK)
+        except Booking.DoesNotExist:
+            return Response({'error': 'Booking not found'}, status=status.HTTP_404_NOT_FOUND)
+
+# Admin: Dashboard Summary Stats
+class AdminDashboardStatsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        total_users = User.objects.count()
+        total_bikes = Bike.objects.count()
+        total_bookings = Booking.objects.count()
+        total_reviews = Review.objects.count()
+
+        return Response({
+            "total_users": total_users,
+            "total_bikes": total_bikes,
+            "total_bookings": total_bookings,
+            "total_reviews": total_reviews,
+        })

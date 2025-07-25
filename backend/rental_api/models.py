@@ -63,26 +63,6 @@ class Booking(models.Model):
         return f"Booking #{self.id} - {self.user.username}"
 
 
-# class Payment(models.Model):
-#     PAYMENT_METHODS = [
-#         ('cash', 'Cash'),
-#         ('card', 'Card'),
-#         ('wallet', 'Wallet'),
-#     ]
-#     PAYMENT_STATUSES = [
-#         ('paid', 'Paid'),
-#         ('failed', 'Failed'),
-#         ('pending', 'Pending'),
-#     ]
-
-#     booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='payment')
-#     amount = models.DecimalField(max_digits=8, decimal_places=2)
-#     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
-#     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUSES, default='pending')
-#     payment_date = models.DateTimeField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"Payment for Booking #{self.booking.id}"
 
 
 class Review(models.Model):

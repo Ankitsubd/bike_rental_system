@@ -5,11 +5,13 @@ import { AuthContext } from '../context/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout,loading } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  
+  if (loading) return null;
+  const handleLogout =()=> {
     logout();
     navigate('/login');
   };
@@ -29,7 +31,7 @@ const Navbar = () => {
         user.is_admin && { name: 'Admin', path: '/admin/dashboard' },
         { name: 'My Bookings', path: '/user/bookings' },
         { name: 'Logout', action: handleLogout },
-      ].filter(Boolean); // remove false entries
+      ].filter(Boolean); 
 
   const isActive = (path) => location.pathname === path;
 
@@ -37,7 +39,7 @@ const Navbar = () => {
     <nav className="bg-white shadow sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          {/* Logo */}
+          
           <Link to="/" className="text-2xl font-bold text-blue-600">
             🚲 BikeRental
           </Link>

@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { requestPasswordReset } from '../../api/auth';
+import { useNavigate } from 'react-router-dom';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await requestPasswordReset(email);
+      await requestPasswordReset(email); 
       setMessage('Password reset link sent to your email.');
-    } catch {
+      setTimeout(() => navigate('/login'), 3000);
+    } catch (err) {
       setMessage('Something went wrong.');
     }
   };
@@ -23,7 +26,7 @@ const ForgotPassword = () => {
           type="email"
           placeholder="Enter your email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           className="w-full p-2 border rounded"
         />
         <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">

@@ -1,36 +1,47 @@
 import { useEffect, useState } from 'react';
-import axios from '../api/axios';
 
-const useFetch = (endpoint, deps = []) => {
+const baseURL = "http://127.0.0.1:8000/api/v1/";
+
+const useFetch = (endpoint) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await axios.get(endpoint);
-        if (isMounted) {
-          setData(res.data);
-          setError(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err.response?.data?.detail || 'Something went wrong');
-          setData(null);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
+    if (!endpoint) return;
 
-    fetchData();
-    return () => {
-      isMounted = false;
-    };
-  }, deps); // re-run fetch on any dependency change
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+  setLoading(false);
+  setError(new Error("Unauthorized: No token"));
+  return;
+}
+
+    fetch(baseURL + endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` })
+      }
+    })
+      .then(async res => {
+        if (!res.ok) {
+          let errorMessage = "Request failed";
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData?.error || JSON.stringify(errorData);
+          } catch {
+            errorMessage = `HTTP ${res.status} - ${res.statusText}`;
+          }
+          throw new Error(errorMessage);
+        }
+
+        return res.json();
+      })
+      .then(setData)
+      .catch(setError)
+      .finally(() => setLoading(false));
+
+  }, [endpoint]); 
 
   return { data, loading, error };
 };

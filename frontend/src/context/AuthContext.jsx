@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   // Check token on page load
-  useEffect(() => {
+    useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (token) {
       try {
@@ -21,17 +21,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = ({ access, refresh }) => {
-    localStorage.setItem('accessToken', access);
-    localStorage.setItem('refreshToken', refresh);
+  // const login = ({ access, refresh }) => {
+  //   localStorage.setItem('accessToken', access);
+  //   localStorage.setItem('refreshToken', refresh);
 
-    try {
-      const decoded = jwtDecode(access);
-      setUser(decoded);
-    } catch (e) {
-      console.error('Failed to decode token');
-      setUser(null);
-    }
+  //   try {
+  //     const decoded = jwtDecode(access);
+  //     setUser(decoded);
+  //   } catch (e) {
+  //     console.error('Failed to decode token');
+  //     setUser(null);
+  //   }
+
+ const login = async ({ email, password }) => {
+    const userData = await loginAPI({ email, password });
+    setUser(userData); 
+    return userData;
   };
 
   const logout = () => {

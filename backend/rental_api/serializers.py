@@ -143,4 +143,4 @@ class LoginSerializer(serializers.Serializer):
 
 
 class SetNewPasswordSerializer(serializers.Serializer):
-    new_password = serializers.CharField(required=True, validators=[validate_password])
+    new_password = serializers.CharField(write_only=True,required=True, validators=[validate_password])
