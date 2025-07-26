@@ -37,7 +37,7 @@ const AppRouter = () => {
         <Route path="/bikes/:id" element={<BikeDetail />} />
       </Route>
 
-      {/* Auth Pages - no layout */}
+    
      
       {/* User Protected Routes inside UserLayout */}
       <Route

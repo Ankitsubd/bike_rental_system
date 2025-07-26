@@ -15,6 +15,8 @@ from django.db.models import Q
 from .utils import verify_reset_token
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny
 
 from .utils import generate_verification_token, generate_reset_token
 from .permissions import IsOwnerOrAdmin, IsAdminUser, IsVerifiedUser
@@ -95,8 +97,6 @@ class PasswordResetRequestView(APIView):
         return Response({"message": "Password reset link sent to your email."}, status=status.HTTP_200_OK)
 
 
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import AllowAny
 class SetNewPasswordView(APIView):
     permission_classes= [AllowAny]
     def patch(self, request, token):
