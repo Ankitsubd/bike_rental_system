@@ -62,13 +62,13 @@ import { jwtDecode } from 'jwt-decode';
 
 export const loginAPI = async ({ email, password }) => {
   try {
-<<<<<<< HEAD
-    const res = await api.post("http://localhost:8000/api/token/", data);
-    console.log("Login response:", res.data); // ✅ Add this line
-=======
+
+    // const res = await api.post("http://localhost:8000/api/token/", data);
+    // console.log("Login response:", res.data);
+
     const res = await api.post('login/', { email, password });
     const { access, refresh, is_admin, is_customer, username } = res.data;
->>>>>>> aac094d2dc79dbd05e79708102d9a3c2ce6bdf16
+
 
     if (!access || !refresh) {
       throw new Error("Incomplete response from server");
@@ -97,16 +97,12 @@ export const loginAPI = async ({ email, password }) => {
 };
 
 
-<<<<<<< HEAD
+
 // Register with only email and password
 export const register = (data) => api.post('http://localhost:8000/api/v1/register/', data);
-=======
-// Register user
-export const register = async ({ email, password }) => {
-  const res = await api.post('register/', { email, password });
-  return res.data;
-};
->>>>>>> aac094d2dc79dbd05e79708102d9a3c2ce6bdf16
+
+
+
 
 // Email verification
 export const verifyEmail = (uid, token) => api.get(`verify-email/${uid}/${token}/`);
