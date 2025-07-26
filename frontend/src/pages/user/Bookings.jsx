@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
+import { cancelBooking } from '../../api/bookings';
 
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -18,6 +19,12 @@ const Bookings = () => {
         setLoading(false);
       });
   }, []);
+  const handleCancel= async (bookingId)=> {
+    if(!window.confirm("Are you sure you want to cancel this booking?")) 
+      return;
+    await cancelBooking(bookingId);
+    refreshBookings();
+  }
 
   if (loading) return <Spinner />;
   if (error) return <p className="text-red-500">{error}</p>;
