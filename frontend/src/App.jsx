@@ -19,6 +19,8 @@ import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import UserDashboard from './pages/user/UserDashboard';
 
 const App = () => {
   return (
@@ -35,6 +37,8 @@ const App = () => {
           <Route path='/register' element={<Register />} />
           <Route path='/forgetpassword' element={<ForgotPassword />} />
           <Route path='/reset-password' element={<ResetPassword/>}/>
+          <Route path='/admin/dashboard' element={<AdminDashboard/>}/>
+          <Route path='/user/dashboard' element={<UserDashboard/>}/>
           {/* Protected Customer Route */}
           <Route
             path='/user/bookings'
@@ -44,7 +48,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-
+        
+        
           {/* Admin Protected Routes with Layout */}
           <Route
             path='/admin/dashboard'
