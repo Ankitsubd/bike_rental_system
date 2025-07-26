@@ -28,17 +28,17 @@ const AppRouter = () => {
       <Route element={<UserLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/bikes" element={<BikeList />} />
         <Route path="/bikes/:id" element={<BikeDetail />} />
       </Route>
 
       {/* Auth Pages - no layout */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-
+     
       {/* User Protected Routes inside UserLayout */}
       <Route
         element={
