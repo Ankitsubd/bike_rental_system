@@ -1,46 +1,41 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Bike, Booking, Review
+from django.contrib.auth.admin import UserAdmin
+from .models import User, Bike, Booking, Review, Analytics
 
+class CustomUserAdmin(UserAdmin):
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_verified', 'date_joined')
+    list_filter = ('is_verified', 'is_staff', 'is_superuser', 'date_joined')
+    search_fields = ('username', 'email', 'first_name', 'last_name')
+    ordering = ('date_joined',)
 
-class CustomUserAdmin(BaseUserAdmin):
-    model = User
-    list_display = ('id', 'username', 'email', 'is_customer', 'is_admin', 'is_verified' ,'created_at')
-    list_filter = ('is_admin', 'is_customer')
-    fieldsets = (
-        (None, {'fields': ('username', 'email', 'password')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_customer', 'is_admin')}),
-        ('Important dates', {'fields': ('last_login', 'date_joined')}),
-    )
-    search_fields = ('username', 'email')
-    ordering = ('-created_at',)
+admin.site.register(User, CustomUserAdmin)
 
 @admin.register(Bike)
 class BikeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'brand', 'model', 'bike_type', 'price_per_hour', 'status', 'added_on')
-    list_filter = ('status', 'brand', 'bike_type')
-    search_fields = ('name', 'brand', 'model')
-
+    list_display = ('name', 'brand', 'model', 'bike_type', 'price_per_hour', 'status', 'rating', 'total_reviews', 'phone_number', 'added_on')
+    list_filter = ('status', 'bike_type', 'brand', 'added_on')
+    search_fields = ('name', 'brand', 'model', 'phone_number')
+    ordering = ('-added_on',)
+    readonly_fields = ('rating', 'total_reviews')
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'bike', 'start_time', 'end_time', 'total_price', 'status', 'created_at')
-    list_filter = ('status',)
+    list_display = ('user', 'bike', 'start_time', 'end_time', 'status', 'total_price', 'created_at')
+    list_filter = ('status', 'created_at')
     search_fields = ('user__username', 'bike__name')
-
-
-# @admin.register(Payment)
-# class PaymentAdmin(admin.ModelAdmin):
-#     list_display = ('id', 'booking', 'amount', 'payment_method', 'payment_status', 'payment_date')
-#     list_filter = ('payment_method', 'payment_status')
-#     search_fields = ('booking__user__username',)
-
+    ordering = ('-created_at',)
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'bike', 'rating', 'created_at')
-    list_filter = ('rating',)
-    search_fields = ('user__username', 'bike__name')
+    list_display = ('user', 'bike', 'rating', 'created_at')
+    list_filter = ('rating', 'created_at')
+    search_fields = ('user__username', 'bike__name', 'comment')
+    ordering = ('-created_at',)
 
-
-admin.site.register(User, CustomUserAdmin)
+@admin.register(Analytics)
+class AnalyticsAdmin(admin.ModelAdmin):
+    list_display = ('action', 'page', 'timestamp', 'user', 'ip_address')
+    list_filter = ('action', 'page', 'timestamp')
+    search_fields = ('action', 'page', 'user__username')
+    readonly_fields = ('timestamp',)
+    ordering = ('-timestamp',)

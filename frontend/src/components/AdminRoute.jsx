@@ -4,7 +4,7 @@ import useAuth from '../context/AuthContext';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
-  return user?.is_admin ? children : <Navigate to="/unauthorized" />;
+  return (user?.is_staff || user?.is_superuser) ? children : <Navigate to="/unauthorized" />;
 };
 
 export default AdminRoute;

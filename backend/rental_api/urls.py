@@ -1,15 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
 from .views import (
+    BikeListView, BikeAdminViewSet,
     UserRegistrationView, UserLoginView, VerifyEmailView,
     PasswordResetRequestView, SetNewPasswordView, ChangePasswordView,
-    BikeListView, BikeAdminViewSet,
-    BookingCreateView, UserBookingsView, AdminBookingListView, AdminBookingUpdateView,
-    ReviewCreateView, AdminReviewViewSet, AdminReviewDeleteView, CancelBookingView, StartRideView, EndRideView, UpdateProfileView,
-    AdminUserListView, UserReviewDeleteView,AdminUserDetailView,AdminUserDeleteView,AdminUserRoleUpdateView,
-    AdminBookingDeleteView, AdminDashboardStatsView
+    BookingCreateView, UserBookingsView, UserCurrentBookingsView, UserRentalHistoryView, AdminBookingListView, AdminBookingUpdateView,
+    ReviewCreateView, ReviewListView, AdminReviewViewSet, AdminReviewDeleteView, CancelBookingView, StartRideView, EndRideView, UpdateProfileView,
+    AdminUserListView, UserReviewDeleteView, AdminUserDetailView, AdminUserDeleteView, AdminUserRoleUpdateView,
+    AdminBookingDeleteView, AdminDashboardStatsView, AdminUserCreateView, UserProfileView, UserDashboardStatsView,
+    bike_stats, AdminAnalyticsView, AnalyticsTrackView
 )
 
 router = DefaultRouter()
@@ -23,18 +22,20 @@ urlpatterns = [
     path('login/', UserLoginView.as_view(), name='login'),
     path('verify-email/<uidb64>/<token>/', VerifyEmailView.as_view(), name='verify-email'),
 
-    # JWT Token
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
     # Password
     path('reset-password/', PasswordResetRequestView.as_view(), name='request-reset'),
     path('set-new-password/<str:token>/', SetNewPasswordView.as_view(), name='set-new-password'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
 
+    # User Profile & Dashboard
+    path('user/profile/', UserProfileView.as_view(), name='user-profile'),
+    path('user/dashboard-stats/', UserDashboardStatsView.as_view(), name='user-dashboard-stats'),
+
     # Booking
     path('book/', BookingCreateView.as_view(), name='book-bike'),
     path('user/bookings/', UserBookingsView.as_view(), name='user-bookings'),
+    path('user/current-bookings/', UserCurrentBookingsView.as_view(), name='user-current-bookings'),
+    path('user/rental-history/', UserRentalHistoryView.as_view(), name='user-rental-history'),
     path('admin/bookings/', AdminBookingListView.as_view(), name='admin-booking-list'),
     path('admin/bookings/<int:booking_id>/update/', AdminBookingUpdateView.as_view(), name='admin-booking-update'),
     # Booking actions
@@ -46,15 +47,16 @@ urlpatterns = [
     path('user/update-profile/', UpdateProfileView.as_view(), name='update-profile'),
 
     # Review
-    path('review/', ReviewCreateView.as_view(), name='submit-review'),
-    path('admin/reviews/<int:review_id>/delete/', AdminReviewDeleteView.as_view(), name='delete-review'),
-    path('review/<int:review_id>/delete/', UserReviewDeleteView.as_view(), name='user-review-delete'),
+    path('reviews/', ReviewListView.as_view(), name='list-reviews'),
+    path('reviews/create/', ReviewCreateView.as_view(), name='create-review'),
+    path('reviews/<int:review_id>/delete/', UserReviewDeleteView.as_view(), name='user-review-delete'),
+    path('admin/reviews/<int:review_id>/delete/', AdminReviewDeleteView.as_view(), name='admin-review-delete'),
 
-
-    #Admin User list views
+    # Admin User list views
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     
     # Admin User Management
+    path('admin/users/create/', AdminUserCreateView.as_view(), name='admin-user-create'),
     path('admin/users/<int:user_id>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
     path('admin/users/<int:user_id>/delete/', AdminUserDeleteView.as_view(), name='admin-user-delete'),
     path('admin/users/<int:user_id>/change-role/', AdminUserRoleUpdateView.as_view(), name='admin-user-role'),
@@ -65,7 +67,11 @@ urlpatterns = [
     # Admin Dashboard Stats
     path('admin/stats/', AdminDashboardStatsView.as_view(), name='admin-dashboard-stats'),
 
+    # Bike Stats
+    path('bikes/stats/', bike_stats, name='bike-stats'),
     
     # DRF Router 
     path('', include(router.urls)),
+    path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
+    path('analytics/track-about-click/', AnalyticsTrackView.as_view(), name='analytics-track'),
 ]

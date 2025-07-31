@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import Bike, Booking, Review
+from .models import Bike, Booking, Review, Analytics
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
@@ -11,30 +11,56 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone', 'address' ,'is_customer', 'is_admin', 'created_at']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'is_verified', 'phone_number', 'address', 'is_staff', 'is_superuser']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     email = serializers.EmailField(required=True)
+    full_name = serializers.CharField(required=True, max_length=255)
+    phone_number = serializers.CharField(required=True, max_length=15)
+    
+    def validate_password(self, value):
+        print(f"Validating password: {value[:3]}...")
+        return value
+
+    def validate_email(self, value):
+        print(f"Validating email: {value}")
+        if User.objects.filter(email=value).exists():
+            print(f"Email {value} already exists")
+            raise serializers.ValidationError("A user with this email already exists.")
+        print(f"Email {value} is valid")
+        return value
+
+    def validate_phone_number(self, value):
+        print(f"Validating phone number: {value}")
+        # Basic phone number validation (you can enhance this)
+        if not value.replace(' ', '').replace('-', '').replace('+', '').isdigit():
+            raise serializers.ValidationError("Please enter a valid phone number.")
+        return value
 
     class Meta:
         model = User
-        fields = ['email', 'password']  
-
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("A user with this email already exists.")
-        return value
+        fields = ['email', 'password', 'full_name', 'phone_number']  
 
     def create(self, validated_data):
         email = validated_data['email']
-        username = email.split('@')[0]  
+        full_name = validated_data['full_name']
+        phone_number = validated_data['phone_number']
+        base_username = email.split('@')[0]
+        
+        # Handle username conflicts by adding a number if needed
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+        
         user = User.objects.create(
             username=username,
             email=email,
-            is_customer=True,   
-            is_admin=False,
+            full_name=full_name,
+            phone_number=phone_number,
             is_verified=False,    
         )
         user.set_password(validated_data['password'])
@@ -48,14 +74,48 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class BikeSerializer(serializers.ModelSerializer):
+    is_available = serializers.SerializerMethodField()
+    rating_display = serializers.SerializerMethodField()
+
     class Meta:
         model = Bike
         fields = '__all__'
 
+    def get_is_available(self, obj):
+        """Check if bike is available"""
+        return obj.status == 'available'
+
+    def get_rating_display(self, obj):
+        """Format rating for display"""
+        return f"{obj.rating}/5 ({obj.total_reviews} reviews)"
+
 
 class BookingSerializer(serializers.ModelSerializer):
-    user = serializers.ReadOnlyField(source='user.username')
-    bike = serializers.ReadOnlyField(source='bike.name')
+    bike_name = serializers.CharField(source='bike.name', read_only=True)
+    user_name = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = Booking
+        fields = '__all__'
+        read_only_fields = ['user', 'total_price']
+
+    def validate(self, data):
+        bike = data.get('bike')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+
+        if bike and bike.status != 'available':
+            raise serializers.ValidationError("This bike is not available for booking.")
+
+        if start_time and end_time and start_time >= end_time:
+            raise serializers.ValidationError("End time must be after start time.")
+
+        return data
+
+
+class AdminBookingSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    bike = BikeSerializer(read_only=True)
 
     class Meta:
         model = Booking
@@ -63,21 +123,14 @@ class BookingSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    user = serializers.ReadOnlyField(source='user.username')
-    bike = serializers.PrimaryKeyRelatedField(queryset=Bike.objects.all())
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    bike_name = serializers.CharField(source='bike.name', read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = Review
-        fields = ['id', 'user', 'bike', 'rating', 'comment', 'created_at']
-
-    def validate(self, data):
-        user = self.context['request'].user
-        bike = data['bike']  # Already resolved to Bike object by DRF
-
-        if Review.objects.filter(user=user, bike=bike).exists():
-            raise serializers.ValidationError("You have already reviewed this bike.")
-
-        return data
+        fields = '__all__'
+        read_only_fields = ['user']
 
 # class LoginSerializer(serializers.Serializer):
 #     email = serializers.EmailField()
@@ -137,10 +190,18 @@ class LoginSerializer(serializers.Serializer):
             "refresh": str(refresh),
             "username": user.username,
             "email": user.email,
-            "is_customer": user.is_customer,
-            "is_admin": user.is_admin,
+            "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
+            "is_verified": user.is_verified,
         }
 
 
 class SetNewPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True,required=True, validators=[validate_password])
+
+
+class AnalyticsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Analytics
+        fields = ['action', 'page', 'timestamp', 'user', 'ip_address', 'user_agent']
+        read_only_fields = ['timestamp', 'user', 'ip_address', 'user_agent']

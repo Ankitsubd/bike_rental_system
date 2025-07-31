@@ -11,36 +11,110 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q
+from django.db.models import Q, Count, Sum, Avg
 from .utils import verify_reset_token
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
+from datetime import timedelta
+from django.db.models import Count, Q
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from .utils import generate_verification_token, generate_reset_token
 from .permissions import IsOwnerOrAdmin, IsAdminUser, IsVerifiedUser
 from .models import Bike, Booking, Review
 from .serializers import (
-    UserSerializer, RegisterSerializer, ChangePasswordSerializer,
-    BikeSerializer, BookingSerializer,
-    ReviewSerializer, LoginSerializer, SetNewPasswordSerializer
+    UserSerializer, RegisterSerializer, LoginSerializer, ChangePasswordSerializer,
+    BikeSerializer, BookingSerializer, AdminBookingSerializer, ReviewSerializer, SetNewPasswordSerializer
 )
 
 User = get_user_model()
+
+
+# User Dashboard Stats
+class UserDashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get user-specific dashboard statistics"""
+        try:
+            user = request.user
+            
+            # Get user's bookings
+            user_bookings = Booking.objects.filter(user=user)
+            total_bookings = user_bookings.count()
+            
+            # Calculate booking statistics
+            active_bookings = user_bookings.filter(status__in=['confirmed', 'in_progress']).count()
+            completed_bookings = user_bookings.filter(status__in=['completed', 'returned']).count()
+            cancelled_bookings = user_bookings.filter(status='cancelled').count()
+            
+            # Calculate total spent
+            total_spent = user_bookings.filter(status='completed').aggregate(
+                total=Sum('total_price')
+            )['total'] or 0
+            
+            # Get recent bookings (last 5)
+            recent_bookings = user_bookings.order_by('-created_at')[:5]
+            
+            # Get user's reviews
+            user_reviews = Review.objects.filter(user=user).count()
+            
+            # Calculate average rating given by user
+            avg_rating_given = Review.objects.filter(user=user).aggregate(
+                avg_rating=Avg('rating')
+            )['avg_rating'] or 0
+
+            return Response({
+                'total_bookings': total_bookings,
+                'active_bookings': active_bookings,
+                'completed_bookings': completed_bookings,
+                'cancelled_bookings': cancelled_bookings,
+                'total_spent': float(total_spent),
+                'total_reviews': user_reviews,
+                'avg_rating_given': round(avg_rating_given, 1),
+                'recent_bookings': BookingSerializer(recent_bookings, many=True).data
+            })
+            
+        except Exception as e:
+            print(f"Error in UserDashboardStatsView: {e}")
+            return Response(
+                {'error': 'Failed to fetch user dashboard statistics'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# User Profile Management
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get current user's profile information"""
+        try:
+            serializer = UserSerializer(request.user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'error': 'Failed to fetch profile'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class UserRegistrationView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        print("Registration request data:", request.data)
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             # token = generate_verification_token(user.email)
             token = PasswordResetTokenGenerator().make_token(user)
-            verification_link = f"http://localhost:8000/api/v1/verify-email/{uid}/{token}/"
+            verification_link = f"http://localhost:5173/verify-email?uid={uid}&token={token}"
             send_mail(
                 subject="Verify your Bike Rental Account",
                 message=f"Click here to verify your email: {verification_link}",
@@ -49,6 +123,8 @@ class UserRegistrationView(APIView):
                 fail_silently=False,
             )
             return Response({"message": "User registered. Please verify your email."}, status=status.HTTP_201_CREATED)
+        else:
+            print("Registration validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -87,9 +163,26 @@ class PasswordResetRequestView(APIView):
         token = generate_reset_token(user.email)
         reset_link = f"http://localhost:5173/reset-password?token={token}"
 
+        # Create a more professional email message
+        email_message = f"""
+Hello {user.username or user.email},
+
+You have requested to reset your password for your Bike Rental account.
+
+Click the link below to reset your password:
+{reset_link}
+
+This link will expire in 1 hour for security reasons.
+
+If you didn't request this password reset, please ignore this email.
+
+Best regards,
+Bike Rental Team
+        """
+
         send_mail(
             subject="Reset your Bike Rental password",
-            message=f"Click the link below to reset your password:\n{reset_link}",
+            message=email_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=False,
@@ -98,27 +191,33 @@ class PasswordResetRequestView(APIView):
 
 
 class SetNewPasswordView(APIView):
-    permission_classes= [AllowAny]
+    permission_classes = [AllowAny]
+    
     def patch(self, request, token):
-        print("Token received:",token)
-        print("Data received:",request.data)
+        print("Token received:", token)
+        print("Data received:", request.data)
+        
+        # Verify the token
         email = verify_reset_token(token)
         print("decoded email from token:", email)
+        
         if not email:
-            return Response({'error': 'Invalid or expired token.'}, status=400)
+            return Response({'error': 'Invalid or expired token. Please request a new password reset.'}, status=400)
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({'error': 'User not found.'}, status=404)
 
+        # Validate the new password
         serializer = SetNewPasswordSerializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
         except ValidationError as e:
             print("Validation error:", e.detail)
-            return Response({'error': 'Invalid input.', 'details': e.detail}, status=400)
+            return Response({'error': 'Password validation failed.', 'details': e.detail}, status=400)
 
+        # Set the new password
         user.set_password(serializer.validated_data['new_password'])
         user.save()
 
@@ -148,11 +247,25 @@ class BikeListView(viewsets.ReadOnlyModelViewSet):
     queryset = Bike.objects.all()
     serializer_class = BikeSerializer
     permission_classes = [permissions.AllowAny]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = {'status': ['exact'],
-                        'price_per_hour': ['gte', 'lte']
-                        }
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = {
+        'bike_type': ['exact'],
+        'status': ['exact'],
+        'price_per_hour': ['gte', 'lte']
+    }
     search_fields = ['name', 'model', 'brand', 'bike_type']
+    ordering_fields = ['price_per_hour', 'name', 'added_on']
+    ordering = ['-added_on']
+
+    def get_queryset(self):
+        queryset = Bike.objects.all()
+        
+        # Handle type filtering - support both 'type' and 'bike_type' parameters
+        bike_type = self.request.query_params.get('type') or self.request.query_params.get('bike_type')
+        if bike_type:
+            queryset = queryset.filter(bike_type=bike_type)
+        
+        return queryset
 
 
 class BikeAdminViewSet(viewsets.ModelViewSet):
@@ -215,14 +328,43 @@ class UserBookingsView(APIView):
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     def get(self, request):
-        bookings = Booking.objects.filter(user=request.user)
+        # Get all bookings for the user, ordered by newest first
+        bookings = Booking.objects.filter(user=request.user).order_by('-created_at')
+        serializer = BookingSerializer(bookings, many=True)
+        return Response(serializer.data)
+
+
+class UserCurrentBookingsView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+    def get(self, request):
+        # Get only current bookings (confirmed, in_use, pending)
+        current_statuses = ['pending', 'confirmed', 'in_use']
+        bookings = Booking.objects.filter(
+            user=request.user, 
+            status__in=current_statuses
+        ).order_by('-created_at')
+        serializer = BookingSerializer(bookings, many=True)
+        return Response(serializer.data)
+
+
+class UserRentalHistoryView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+    def get(self, request):
+        # Get only completed and cancelled bookings
+        history_statuses = ['completed', 'cancelled']
+        bookings = Booking.objects.filter(
+            user=request.user, 
+            status__in=history_statuses
+        ).order_by('-created_at')
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data)
 
 
 class AdminBookingListView(ListAPIView):
     queryset = Booking.objects.all()
-    serializer_class = BookingSerializer
+    serializer_class = AdminBookingSerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'bike__name', 'user__username']
@@ -251,11 +393,21 @@ class ReviewCreateView(APIView):
     permission_classes = [IsAuthenticated, IsVerifiedUser]
 
     def post(self, request):
-        serializer = ReviewSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save(user=request.user)
-            return Response({'message': 'Review submitted successfully'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            print(f"ReviewCreateView - User: {request.user.username}")
+            print(f"User is verified: {request.user.is_verified}")
+            print(f"Request data: {request.data}")
+            
+            serializer = ReviewSerializer(data=request.data, context={'request': request})
+            if serializer.is_valid():
+                review = serializer.save(user=request.user)
+                return Response({'message': 'Review submitted successfully'}, status=status.HTTP_201_CREATED)
+            else:
+                print(f"Serializer errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Exception in ReviewCreateView: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -336,10 +488,12 @@ class EndRideView(APIView):
             return Response({'error': 'Cannot end this ride.'}, status=status.HTTP_400_BAD_REQUEST)
 
         booking.status = 'completed'
-        booking.bike.status = 'returned'
+        booking.bike.status = 'available'  # Make bike immediately available
         booking.bike.save()
         booking.save()
-        return Response({'message': 'Ride ended successfully and bike returned.'}, status=status.HTTP_200_OK)
+        return Response({
+            'message': 'Ride ended successfully. Bike is now available.',
+        }, status=status.HTTP_200_OK)
 
 
 class UpdateProfileView(UpdateAPIView):
@@ -348,31 +502,6 @@ class UpdateProfileView(UpdateAPIView):
 
     def get_object(self):
         return self.request.user
-
-
-class AdminUserListView(APIView):
-    permission_classes = [IsAdminUser]
-
-    def get(self, request):
-        is_admin = request.query_params.get('is_admin')
-        is_customer = request.query_params.get('is_customer')
-        search = request.query_params.get('search')
-
-        users = User.objects.all()
-
-        if is_admin is not None:
-            users = users.filter(is_admin=(is_admin.lower() == 'true'))
-
-        if is_customer is not None:
-            users = users.filter(is_customer=(is_customer.lower() == 'true'))
-
-        if search:
-            users = users.filter(
-                Q(username__icontains=search) | Q(email__icontains=search)
-            )
-
-        serializer = UserSerializer(users, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserReviewDeleteView(APIView):
@@ -404,15 +533,15 @@ class AdminUserRoleUpdateView(APIView):
     permission_classes = [IsAdminUser]
 
     def patch(self, request, user_id):
-        is_admin = request.data.get("is_admin")
-        is_customer = request.data.get("is_customer")
+        is_staff = request.data.get("is_staff")
+        is_superuser = request.data.get("is_superuser")
 
         try:
             user = User.objects.get(id=user_id)
-            if is_admin is not None:
-                user.is_admin = is_admin
-            if is_customer is not None:
-                user.is_customer = is_customer
+            if is_staff is not None:
+                user.is_staff = is_staff
+            if is_superuser is not None:
+                user.is_superuser = is_superuser
             user.save()
             return Response({'message': 'User role updated successfully'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
@@ -442,19 +571,237 @@ class AdminBookingDeleteView(APIView):
         except Booking.DoesNotExist:
             return Response({'error': 'Booking not found'}, status=status.HTTP_404_NOT_FOUND)
 
+# Admin: Create User
+class AdminUserCreateView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            # Auto-verify users created by admin
+            user.is_verified = True
+            user.save()
+            return Response({
+                "message": "User created successfully",
+                "user_id": user.id
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 # Admin: Dashboard Summary Stats
 class AdminDashboardStatsView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        total_users = User.objects.count()
-        total_bikes = Bike.objects.count()
-        total_bookings = Booking.objects.count()
-        total_reviews = Review.objects.count()
+        try:
+            # Basic counts
+            total_users = User.objects.count()
+            total_bikes = Bike.objects.count()
+            total_bookings = Booking.objects.count()
+            total_reviews = Review.objects.count()
+            
+            # User breakdown
+            admin_users = User.objects.filter(is_staff=True).count()
+            customer_users = User.objects.filter(is_staff=False, is_superuser=False).count()
+            verified_users = User.objects.filter(is_verified=True).count()
+            
+            # Bike status breakdown
+            available_bikes = Bike.objects.filter(status='available').count()
+            booked_bikes = Bike.objects.filter(status='booked').count()
+            in_use_bikes = Bike.objects.filter(status='in_use').count()
+            
+            # Booking status breakdown
+            pending_bookings = Booking.objects.filter(status='pending').count()
+            confirmed_bookings = Booking.objects.filter(status='confirmed').count()
+            completed_bookings = Booking.objects.filter(status='completed').count()
+            cancelled_bookings = Booking.objects.filter(status='cancelled').count()
+            
+            # Recent activity (last 7 days)
+            from datetime import timedelta
+            from django.utils import timezone
+            
+            week_ago = timezone.now() - timedelta(days=7)
+            recent_bookings = Booking.objects.filter(created_at__gte=week_ago).count()
+            recent_users = User.objects.filter(date_joined__gte=week_ago).count()
+            recent_reviews = Review.objects.filter(created_at__gte=week_ago).count()
+            
+            # Revenue calculation (completed bookings)
+            total_revenue = Booking.objects.filter(status='completed').aggregate(
+                total=Sum('total_price')
+            )['total'] or 0
+            
+            # Average rating
+            from django.db.models import Avg
+            avg_rating = Review.objects.aggregate(avg_rating=Avg('rating'))['avg_rating'] or 0
 
-        return Response({
-            "total_users": total_users,
-            "total_bikes": total_bikes,
-            "total_bookings": total_bookings,
-            "total_reviews": total_reviews,
-        })
+            return Response({
+                # Basic stats
+                "total_users": total_users,
+                "total_bikes": total_bikes,
+                "total_bookings": total_bookings,
+                "total_reviews": total_reviews,
+                
+                # User breakdown
+                "admin_users": admin_users,
+                "customer_users": customer_users,
+                "verified_users": verified_users,
+                
+                # Bike status breakdown
+                "available_bikes": available_bikes,
+                "booked_bikes": booked_bikes,
+                "in_use_bikes": in_use_bikes,
+                
+                # Booking status breakdown
+                "pending_bookings": pending_bookings,
+                "confirmed_bookings": confirmed_bookings,
+                "completed_bookings": completed_bookings,
+                "cancelled_bookings": cancelled_bookings,
+                
+                # Recent activity
+                "recent_bookings": recent_bookings,
+                "recent_users": recent_users,
+                "recent_reviews": recent_reviews,
+                
+                # Financial and quality metrics
+                "total_revenue": float(total_revenue),
+                "avg_rating": round(avg_rating, 1),
+                
+                # Calculated percentages
+                "bike_utilization_rate": round((booked_bikes + in_use_bikes) / total_bikes * 100, 1) if total_bikes > 0 else 0,
+                "booking_completion_rate": round(completed_bookings / total_bookings * 100, 1) if total_bookings > 0 else 0,
+                "user_verification_rate": round(verified_users / total_users * 100, 1) if total_users > 0 else 0,
+            })
+            
+        except Exception as e:
+            print(f"Error in AdminDashboardStatsView: {e}")
+            return Response(
+                {'error': 'Failed to fetch dashboard statistics'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminUserListView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        is_staff = request.query_params.get('is_staff')
+        is_superuser = request.query_params.get('is_superuser')
+        search = request.query_params.get('search')
+
+        users = User.objects.all()
+
+        if is_staff is not None:
+            users = users.filter(is_staff=(is_staff.lower() == 'true'))
+
+        if is_superuser is not None:
+            users = users.filter(is_superuser=(is_superuser.lower() == 'true'))
+
+        if search:
+            users = users.filter(
+                Q(username__icontains=search) | Q(email__icontains=search)
+            )
+
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ReviewListView(APIView):
+    """
+    Public endpoint to list reviews with optional bike filtering
+    """
+    def get(self, request):
+        # Get bike filter from query parameters
+        bike_id = request.query_params.get('bike')
+        
+        # Start with all reviews
+        reviews = Review.objects.select_related('user', 'bike').order_by('-created_at')
+        
+        # Filter by bike if bike_id is provided
+        if bike_id:
+            reviews = reviews.filter(bike_id=bike_id)
+        
+        serializer = ReviewSerializer(reviews, many=True)
+        return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def bike_stats(request):
+    """Get bike statistics for the frontend"""
+    try:
+        total_bikes = Bike.objects.count()
+        available_bikes = Bike.objects.filter(status='available').count()
+        booked_bikes = Bike.objects.filter(status='booked').count()
+        in_use_bikes = Bike.objects.filter(status='in_use').count()
+        
+        stats = {
+            'total': total_bikes,
+            'available': available_bikes,
+            'booked': booked_bikes,
+            'in_use': in_use_bikes,
+        }
+        
+        return Response(stats)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+
+class AnalyticsTrackView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            # Get client IP address
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip = x_forwarded_for.split(',')[0]
+            else:
+                ip = request.META.get('REMOTE_ADDR')
+
+            # Create analytics entry
+            analytics_data = {
+                'action': request.data.get('action'),
+                'page': request.data.get('page'),
+                'user': request.user if request.user.is_authenticated else None,
+                'ip_address': ip,
+                'user_agent': request.META.get('HTTP_USER_AGENT', '')
+            }
+
+            serializer = AnalyticsSerializer(data=analytics_data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'message': 'Analytics tracked successfully'}, status=201)
+            else:
+                return Response(serializer.errors, status=400)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class AdminAnalyticsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        try:
+            # Get analytics data
+            total_clicks = Analytics.objects.count()
+            browse_bikes_clicks = Analytics.objects.filter(action='browse_bikes_clicked').count()
+            about_page_visits = Analytics.objects.filter(action='about_page_visited').count()
+            
+            # Get recent analytics
+            recent_analytics = Analytics.objects.all()[:10]
+            
+            analytics_data = {
+                'total_clicks': total_clicks,
+                'browse_bikes_clicks': browse_bikes_clicks,
+                'about_page_visits': about_page_visits,
+                'recent_analytics': AnalyticsSerializer(recent_analytics, many=True).data
+            }
+            
+            return Response(analytics_data)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+

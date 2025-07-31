@@ -23,10 +23,12 @@ const BikeFilters = ({onFilter}) => {
         className='border px-4 py-2 rounded w-full md:w-full'
         >
             <option value="">All Categories</option>
-            <option value="mountain">Mountain</option>
-            <option value="road">Road</option>
-            <option value="electric">Electric</option>
-            <option value="hybrid">Hybrid</option>
+            <option value="Mountain">Mountain</option>
+            <option value="City ride">City ride</option>
+            <option value="Road">Road</option>
+            <option value="Hybrid">Hybrid</option>
+            <option value="Electric">Electric</option>
+            <option value="BMX">BMX</option>
         </select>
 
         <button 

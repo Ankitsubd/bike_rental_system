@@ -13,19 +13,25 @@ import BikeList from "../pages/bikes/BikeList";
 import BikeDetail from "../pages/bikes/BikeDetail";
 import Profile from "../pages/user/Profile";
 import Bookings from "../pages/user/Bookings";
+
+import RentalHistory from "../pages/user/RentalHistory";
+import ChangePassword from "../pages/user/ChangePassword";
+import AddReview from "../pages/user/AddReview";
+import AdminHome from "../pages/admin/AdminHome";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminProfile from "../pages/admin/AdminProfile";
 import ManageBikes from "../pages/admin/ManageBikes";
 import ManageBookings from "../pages/admin/ManageBookings";
 import ModerateReviews from "../pages/admin/ModerateReviews";
+import UserAdmin from "../pages/admin/UserAdmin";
 import NotFound from "../pages/NotFound";
 
 const AppRouter = () => {
   return (
     <Routes>
-
-      {/* Public Routes with UserLayout */}
+      {/* UserLayout wraps all user routes */}
       <Route element={<UserLayout />}>
+        {/* Public user routes */}
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/login" element={<Login />} />
@@ -35,36 +41,28 @@ const AppRouter = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/bikes" element={<BikeList />} />
         <Route path="/bikes/:id" element={<BikeDetail />} />
+        {/* Protected user routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/user/profile" element={<Profile />} />
+          <Route path="/user/bookings" element={<Bookings />} />
+
+          <Route path="/user/rental-history" element={<RentalHistory />} />
+          <Route path="/user/change-password" element={<ChangePassword />} />
+          <Route path="/user/review" element={<AddReview />} />
+        </Route>
       </Route>
 
-    
-     
-      {/* User Protected Routes inside UserLayout */}
-      <Route
-        element={
-          <ProtectedRoute role="user">
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/user/profile" element={<Profile />} />
-        <Route path="/user/bookings" element={<Bookings />} />
-        
-      </Route>
-
-      {/* Admin Protected Routes inside AdminLayout */}
-      <Route
-        element={
-          <ProtectedRoute role="admin">
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/profile" element={<AdminProfile />} />
-        <Route path="/admin/bikes" element={<ManageBikes />} />
-        <Route path="/admin/bookings" element={<ManageBookings />} />
-        <Route path="/admin/reviews" element={<ModerateReviews />} />
+      {/* Admin Routes - Protected with AdminLayout */}
+      <Route path="/admin" element={<ProtectedRoute role="admin" />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin/dashboard" element={<AdminHome />} />
+          <Route path="/admin/analytics" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<UserAdmin />} />
+          <Route path="/admin/profile" element={<AdminProfile />} />
+          <Route path="/admin/bikes" element={<ManageBikes />} />
+          <Route path="/admin/bookings" element={<ManageBookings />} />
+          <Route path="/admin/reviews" element={<ModerateReviews />} />
+        </Route>
       </Route>
 
       {/* 404 Page */}

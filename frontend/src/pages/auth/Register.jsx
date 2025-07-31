@@ -5,7 +5,13 @@ import { FaEyeSlash } from "react-icons/fa";
 import { FaEye } from "react-icons/fa";
 
 const Register = () => {
-  const [form, setForm] = useState({ email: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({ 
+    email: '', 
+    password: '', 
+    confirmPassword: '',
+    full_name: '',
+    phone_number: ''
+  });
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -20,6 +26,23 @@ const Register = () => {
   const handleSubmit = async (e)=> {
     e.preventDefault();
     console.log('registering with:',form)
+    
+    // Validation
+    if (!form.full_name?.trim()) {
+      setError("Full name is required");
+      return;
+    }
+    
+    if (!form.phone_number?.trim()) {
+      setError("Phone number is required");
+      return;
+    }
+    
+    if (!form.email?.trim()) {
+      setError("Email is required");
+      return;
+    }
+    
     if (form.password !== form.confirmPassword) {
       setError("Passwords don't match");
       return;
@@ -27,12 +50,39 @@ const Register = () => {
 
     try {
       await register(form);
-      setSuccess('Registration successful! Check your email to verify.');
-      setForm({email:'', password:''});
-      // navigate('/login');    
+      setSuccess('Registration successful! Please check your email and click the verification link to complete your registration.');
+      setForm({
+        email: '', 
+        password: '', 
+        confirmPassword: '',
+        full_name: '',
+        phone_number: ''
+      });
+      
+      // Redirect to login after successful registration
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000); // Wait 2 seconds to show success message
     } catch (err) {
       console.error("Register error:", err.response?.data || err.message);
-      setError("Registration failed: " + (err.response?.data?.email?.[0] || "Invalid input"));
+      
+      // Handle field-specific errors
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.full_name) {
+          setError("Full name: " + errorData.full_name[0]);
+        } else if (errorData.phone_number) {
+          setError("Phone number: " + errorData.phone_number[0]);
+        } else if (errorData.email) {
+          setError("Email: " + errorData.email[0]);
+        } else if (errorData.password) {
+          setError("Password: " + errorData.password[0]);
+        } else {
+          setError("Registration failed: " + (errorData.error || "Invalid input"));
+        }
+      } else {
+        setError("Registration failed. Please try again.");
+      }
     }
   };
 
@@ -43,6 +93,36 @@ const Register = () => {
       {success && <p className="text-green-600 text-sm mb-2">{success}</p>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
+          <label htmlFor='full_name' className='block font-medium text-gray-700'>
+            Full Name
+          </label>
+          <input
+            type="text"
+            name="full_name"
+            placeholder="Enter your full name"
+            value={form.full_name || ''}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        
+        <div>
+          <label htmlFor='phone_number' className='block font-medium text-gray-700'>
+            Phone Number
+          </label>
+          <input
+            type="tel"
+            name="phone_number"
+            placeholder="Enter your phone number"
+            value={form.phone_number || ''}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        
+        <div>
           <label htmlFor='email' className='block font-medium text-gray-700'>
             Email
           </label>
@@ -50,7 +130,7 @@ const Register = () => {
           type="email"
           name="email"
           placeholder="Email"
-          value={form.email ?? ''}
+          value={form.email || ''}
           onChange={handleChange}
           required
           className="w-full p-2 border rounded"
@@ -65,7 +145,7 @@ const Register = () => {
           type={showPassword ? 'text' : 'password'}
           name="password"
           placeholder="Password"
-          value={form.password}
+          value={form.password || ''}
           onChange={handleChange}
           required
           className="w-full px-4 py-2 border border-gray-300 rounded pr-10 focus:outline-none focus:ring focus:ring-blue-300"
@@ -87,7 +167,7 @@ const Register = () => {
           type={showConfirmPassword ? 'text' : 'password'}
           name="confirmPassword"
           placeholder="Confirm Password"
-          value={form.confirmPassword}
+          value={form.confirmPassword || ''}
           onChange={handleChange}
           required
           className="w-full px-4 py-2 border border-gray-300 rounded pr-10 focus:outline-none focus:ring focus:ring-blue-300"

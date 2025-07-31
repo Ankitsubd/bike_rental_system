@@ -1,74 +1,11 @@
-// import api from "./axios"; 
-
-// export const login = async (email,password) => {
-//   try {
-//     const res = await api.post("http://127.0.0.1:8000/api/v1/login/", data);
-//     console.log("Login response:", res.data); 
-
-//     const access = res.data.access;
-//     const refresh = res.data.refresh;
-
-//     if (!access || typeof access !== 'string') {
-//       throw new Error("Access token is missing or invalid");
-//     }
-
-//     const decoded = jwtDecode(res.access);
-//     console.log("Decoded JWT:", decoded);
-
-//     localStorage.setItem("accessToken", res.access);
-//     localStorage.setItem("refreshToken", refresh);
-
-//     return res.data;
-//   } catch (error) {
-//     console.error("Login failed:", error);
-//     throw error;
-//   }
-// };
-
-
-// // Register with only email and password
-// export const register = async({email,password})=>{
-//   const response = await api.post('http://127.0.0.1:8000/api/v1/register/'
-// ,{
-//     email,
-//     password
-//   });
-//   return response.data;
-// }
-
-// // Email verification via uid/token
-// export const verifyEmail = (uid, token) => api.get(`verify-email/${uid}/${token}/`);
-
-// // Request password reset link
-// export const requestPasswordReset = (email) => api.post('request-reset/', { email });
-
-// // Reset password with token (PATCH method if required by backend)
-// export const resetPassword = (data) => api.patch('set-new-password/', data);
-
-// // Change password (requires auth)
-// export const changePassword = (data) => api.put('change-password/', data);
-
-// // Logout = clear localStorage
-// export const logout = () => {
-//   localStorage.removeItem('accessToken');
-//   localStorage.removeItem('refreshToken');
-// };
-
-import { useState } from 'react';
 import api from './axios';
 import { jwtDecode } from 'jwt-decode';
 
 // Login user
-
 export const loginAPI = async ({ email, password }) => {
   try {
-
-    // const res = await api.post("http://localhost:8000/api/token/", data);
-    // console.log("Login response:", res.data);
-
     const res = await api.post('login/', { email, password });
-    const { access, refresh, is_admin, is_customer, username } = res.data;
-
+    const { access, refresh, is_staff, is_superuser, username, is_verified } = res.data;
 
     if (!access || !refresh) {
       throw new Error("Incomplete response from server");
@@ -77,16 +14,20 @@ export const loginAPI = async ({ email, password }) => {
     // Store tokens and metadata
     localStorage.setItem('accessToken', access);
     localStorage.setItem('refreshToken', refresh);
-    localStorage.setItem('role', is_admin ? 'admin' : 'customer');
+    localStorage.setItem('role', (is_staff || is_superuser) ? 'admin' : 'customer');
     localStorage.setItem('email', email);
     localStorage.setItem('username', username);
+    localStorage.setItem('is_staff', is_staff);
+    localStorage.setItem('is_superuser', is_superuser);
+    localStorage.setItem('is_verified', is_verified);
 
     // Return decoded token to AuthContext
     const decoded = jwtDecode(access);
     return {
       ...decoded,
-      is_admin,
-      is_customer,
+      is_staff,
+      is_superuser,
+      is_verified,
       username,
       email
     };
@@ -96,13 +37,13 @@ export const loginAPI = async ({ email, password }) => {
   }
 };
 
-
-
-// Register with only email and password
-export const register = (data) => api.post('http://localhost:8000/api/v1/register/', data);
-
-
-
+// Register with email, password, full_name, and phone_number
+export const register = (data) => {
+  // Send all required fields to backend
+  const { email, password, full_name, phone_number } = data;
+  console.log('Sending registration data:', { email, password, full_name, phone_number });
+  return api.post('register/', { email, password, full_name, phone_number });
+};
 
 // Email verification
 export const verifyEmail = (uid, token) => api.get(`verify-email/${uid}/${token}/`);
@@ -111,25 +52,33 @@ export const verifyEmail = (uid, token) => api.get(`verify-email/${uid}/${token}
 export const requestPasswordReset = (email) => api.post('reset-password/', { email });
 
 // Reset password with token
-export const resetPassword = (token,data) => api.patch(`set-new-password/${token}/`, data,{
-  headers: {Authorization:''},
+export const resetPassword = (token, data) => api.patch(`set-new-password/${token}/`, data, {
+  headers: { Authorization: '' },
 });
 
 // Change password (authenticated)
-export const changePassword = (data) => api.patch('change-password/', data);
+export const changePassword = (data) => api.put('change-password/', data);
 
 // Logout
 export const logout = () => {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
+  localStorage.removeItem('role');
+  localStorage.removeItem('email');
+  localStorage.removeItem('username');
+  localStorage.removeItem('is_staff');
+  localStorage.removeItem('is_superuser');
+  localStorage.removeItem('is_verified');
 };
 
-export const getUserProfile = async()=>{
-  const res = await api.get('/users/me/');
+// Get user profile
+export const getUserProfile = async () => {
+  const res = await api.get('user/profile/');
   return res.data;
 };
 
-export const updateUserProfile = async(data)=>{
-  const res = await api.put('/users/me/',data);
-  return res.data
-}
+// Update user profile
+export const updateUserProfile = async (data) => {
+  const res = await api.put('user/update-profile/', data);
+  return res.data;
+};
