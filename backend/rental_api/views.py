@@ -105,6 +105,34 @@ class UserProfileView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    def put(self, request):
+        """Update current user's profile information"""
+        try:
+            user = request.user
+            print(f"Updating profile for user: {user.username}")
+            print(f"Request data: {request.data}")
+            
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            if serializer.is_valid():
+                print(f"Serializer is valid. Saving user...")
+                updated_user = serializer.save()
+                print(f"User saved successfully. Updated fields: {serializer.data}")
+                
+                # Force refresh from database to ensure we get the latest data
+                user.refresh_from_db()
+                print(f"User after refresh: username={user.username}, email={user.email}, full_name={user.full_name}, phone_number={user.phone_number}")
+                
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                print(f"Serializer errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Exception in profile update: {e}")
+            return Response(
+                {'error': 'Failed to update profile'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class UserRegistrationView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -343,26 +371,34 @@ class BookingCreateView(APIView):
                 'details': 'The bike has conflicting bookings during your selected time range.'
             }, status=status.HTTP_409_CONFLICT)
 
-        fmt_start = timezone.datetime.fromisoformat(start_time)
-        fmt_end = timezone.datetime.fromisoformat(end_time)
+        try:
+            fmt_start = timezone.datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+            fmt_end = timezone.datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+        except ValueError as e:
+            return Response({'error': f'Invalid datetime format: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        
         duration = (fmt_end - fmt_start).total_seconds() / 3600
         if duration <= 0:
             return Response({'error': 'Invalid time range.'}, status=status.HTTP_400_BAD_REQUEST)
 
         total_price = round(duration * float(bike.price_per_hour), 2)
-        booking = Booking.objects.create(
-            user=request.user,
-            bike=bike,
-            start_time=start_time,
-            end_time=end_time,
-            total_price=total_price,
-            status='confirmed'
-        )
-        bike.status = 'booked'
-        bike.save()
+        
+        try:
+            booking = Booking.objects.create(
+                user=request.user,
+                bike=bike,
+                start_time=fmt_start,
+                end_time=fmt_end,
+                total_price=total_price,
+                status='confirmed'
+            )
+            bike.status = 'booked'
+            bike.save()
 
-        serializer = BookingSerializer(booking)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            serializer = BookingSerializer(booking)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Failed to create booking: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserBookingsView(APIView):
@@ -518,7 +554,6 @@ class StartRideView(APIView):
 class EndRideView(APIView):
     permission_classes = [IsAuthenticated, IsVerifiedUser]
 
-
     def patch(self, request, booking_id):
         try:
             booking = Booking.objects.get(id=booking_id, user=request.user)
@@ -528,13 +563,51 @@ class EndRideView(APIView):
         if booking.status != 'in_use':
             return Response({'error': 'Cannot end this ride.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        booking.status = 'completed'
-        booking.bike.status = 'available'  # Make bike immediately available
-        booking.bike.save()
-        booking.save()
-        return Response({
-            'message': 'Ride ended successfully. Bike is now available.',
-        }, status=status.HTTP_200_OK)
+        try:
+            # Calculate actual ride duration and cost
+            from django.utils import timezone
+            from decimal import Decimal
+            
+            actual_end_time = timezone.now()
+            actual_duration_seconds = (actual_end_time - booking.start_time).total_seconds()
+            actual_duration_hours = actual_duration_seconds / 3600
+            
+            # Round up to next hour if more than 10 minutes over
+            minutes_over = (actual_duration_seconds % 3600) / 60
+            if minutes_over > 10:
+                actual_duration_hours = int(actual_duration_hours) + 1
+            else:
+                actual_duration_hours = int(actual_duration_hours)
+            
+            # Calculate actual cost based on rounded duration
+            actual_total_price = Decimal(str(actual_duration_hours)) * booking.bike.price_per_hour
+            
+            # Update booking with actual end time and cost
+            booking.actual_end_time = actual_end_time
+            booking.actual_total_price = actual_total_price
+            booking.status = 'completed'
+            booking.bike.status = 'available'  # Make bike immediately available
+            booking.bike.save()
+            booking.save()
+            
+            return Response({
+                'message': 'Ride ended successfully. Bike is now available.',
+                'actual_end_time': actual_end_time,
+                'actual_duration_hours': actual_duration_hours,
+                'actual_total_price': int(actual_total_price),
+                'original_total_price': int(booking.total_price),
+                'price_per_hour': int(booking.bike.price_per_hour),
+                'cost_breakdown': {
+                    'original_booking_hours': round((booking.end_time - booking.start_time).total_seconds() / 3600, 2),
+                    'actual_ride_hours': actual_duration_hours,
+                    'price_per_hour': int(booking.bike.price_per_hour),
+                    'original_cost': int(booking.total_price),
+                    'actual_cost': int(actual_total_price),
+                    'difference': int(actual_total_price - booking.total_price)
+                }
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Failed to end ride: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UpdateProfileView(UpdateAPIView):

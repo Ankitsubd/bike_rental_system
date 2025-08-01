@@ -62,6 +62,8 @@ export const AuthProvider = ({ children }) => {
       const role = localStorage.getItem('role');
       const email = localStorage.getItem('email');
       const username = localStorage.getItem('username');
+      const full_name = localStorage.getItem('full_name');
+      const phone_number = localStorage.getItem('phone_number');
       const is_staff = localStorage.getItem('is_staff') === 'true';
       const is_superuser = localStorage.getItem('is_superuser') === 'true';
       const is_customer = localStorage.getItem('is_customer') === 'true';
@@ -74,7 +76,9 @@ export const AuthProvider = ({ children }) => {
         is_customer: is_customer || role === 'customer',
         is_verified,
         email,
-        username
+        username,
+        full_name,
+        phone_number
       });
     };
 
@@ -102,6 +106,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('is_superuser', userData.is_superuser);
       localStorage.setItem('is_customer', userData.is_customer);
       localStorage.setItem('is_verified', userData.is_verified);
+      if (userData.full_name) localStorage.setItem('full_name', userData.full_name);
+      if (userData.phone_number) localStorage.setItem('phone_number', userData.phone_number);
       
       return userData;
     } catch (error) {
@@ -116,6 +122,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('role');
     localStorage.removeItem('email');
     localStorage.removeItem('username');
+    localStorage.removeItem('full_name');
+    localStorage.removeItem('phone_number');
     localStorage.removeItem('is_staff');
     localStorage.removeItem('is_superuser');
     localStorage.removeItem('is_customer');
@@ -123,8 +131,21 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateUser = (userData) => {
+    setUser(userData);
+    // Update localStorage with new user data
+    if (userData.email) localStorage.setItem('email', userData.email);
+    if (userData.username) localStorage.setItem('username', userData.username);
+    if (userData.full_name) localStorage.setItem('full_name', userData.full_name);
+    if (userData.phone_number) localStorage.setItem('phone_number', userData.phone_number);
+    if (userData.is_staff !== undefined) localStorage.setItem('is_staff', userData.is_staff);
+    if (userData.is_superuser !== undefined) localStorage.setItem('is_superuser', userData.is_superuser);
+    if (userData.is_customer !== undefined) localStorage.setItem('is_customer', userData.is_customer);
+    if (userData.is_verified !== undefined) localStorage.setItem('is_verified', userData.is_verified);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -44,7 +44,6 @@ const Home = () => {
 
   useEffect(() => {
     // Don't redirect while auth is loading
-    if (authLoading) return;
 
     // Redirect admin users to admin dashboard
     if (user && (user.is_staff || user.is_superuser)) {

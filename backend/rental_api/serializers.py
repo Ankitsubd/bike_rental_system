@@ -12,6 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'is_verified', 'phone_number', 'address', 'is_staff', 'is_superuser']
+        read_only_fields = ['id', 'is_verified', 'is_staff', 'is_superuser']  # These fields shouldn't be updated via profile
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -180,11 +181,56 @@ class BikeSerializer(serializers.ModelSerializer):
 class BookingSerializer(serializers.ModelSerializer):
     bike_name = serializers.CharField(source='bike.name', read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
+    price_per_hour = serializers.DecimalField(source='bike.price_per_hour', read_only=True, max_digits=10, decimal_places=2)
+    actual_duration_hours = serializers.SerializerMethodField()
+    original_duration_hours = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
         fields = '__all__'
-        read_only_fields = ['user', 'total_price']
+        read_only_fields = ['user', 'total_price', 'actual_end_time', 'actual_total_price']
+
+    def get_actual_duration_hours(self, obj):
+        if obj.actual_end_time:
+            try:
+                # Ensure we're working with datetime objects
+                if isinstance(obj.actual_end_time, str):
+                    from django.utils.dateparse import parse_datetime
+                    actual_end = parse_datetime(obj.actual_end_time)
+                else:
+                    actual_end = obj.actual_end_time
+                
+                if isinstance(obj.start_time, str):
+                    from django.utils.dateparse import parse_datetime
+                    start = parse_datetime(obj.start_time)
+                else:
+                    start = obj.start_time
+                
+                duration = (actual_end - start).total_seconds() / 3600
+                return round(duration, 2)
+            except (TypeError, ValueError):
+                return None
+        return None
+
+    def get_original_duration_hours(self, obj):
+        try:
+            # Ensure we're working with datetime objects
+            if isinstance(obj.end_time, str):
+                from django.utils.dateparse import parse_datetime
+                end = parse_datetime(obj.end_time)
+            else:
+                end = obj.end_time
+            
+            if isinstance(obj.start_time, str):
+                from django.utils.dateparse import parse_datetime
+                start = parse_datetime(obj.start_time)
+            else:
+                start = obj.start_time
+            
+            duration = (end - start).total_seconds() / 3600
+            return round(duration, 2)
+        except (TypeError, ValueError):
+            return None
 
     def validate(self, data):
         bike = data.get('bike')
@@ -203,10 +249,55 @@ class BookingSerializer(serializers.ModelSerializer):
 class AdminBookingSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     bike = BikeSerializer(read_only=True)
+    price_per_hour = serializers.DecimalField(source='bike.price_per_hour', read_only=True, max_digits=10, decimal_places=2)
+    actual_duration_hours = serializers.SerializerMethodField()
+    original_duration_hours = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
-        fields = ['id', 'user', 'bike', 'start_time', 'end_time', 'total_price', 'status', 'created_at']
+        fields = ['id', 'user', 'bike', 'start_time', 'end_time', 'actual_end_time', 'total_price', 'actual_total_price', 'status', 'created_at', 'price_per_hour', 'actual_duration_hours', 'original_duration_hours']
+
+    def get_actual_duration_hours(self, obj):
+        if obj.actual_end_time:
+            try:
+                # Ensure we're working with datetime objects
+                if isinstance(obj.actual_end_time, str):
+                    from django.utils.dateparse import parse_datetime
+                    actual_end = parse_datetime(obj.actual_end_time)
+                else:
+                    actual_end = obj.actual_end_time
+                
+                if isinstance(obj.start_time, str):
+                    from django.utils.dateparse import parse_datetime
+                    start = parse_datetime(obj.start_time)
+                else:
+                    start = obj.start_time
+                
+                duration = (actual_end - start).total_seconds() / 3600
+                return round(duration, 2)
+            except (TypeError, ValueError):
+                return None
+        return None
+
+    def get_original_duration_hours(self, obj):
+        try:
+            # Ensure we're working with datetime objects
+            if isinstance(obj.end_time, str):
+                from django.utils.dateparse import parse_datetime
+                end = parse_datetime(obj.end_time)
+            else:
+                end = obj.end_time
+            
+            if isinstance(obj.start_time, str):
+                from django.utils.dateparse import parse_datetime
+                start = parse_datetime(obj.start_time)
+            else:
+                start = obj.start_time
+            
+            duration = (end - start).total_seconds() / 3600
+            return round(duration, 2)
+        except (TypeError, ValueError):
+            return None
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -274,6 +365,8 @@ class LoginSerializer(serializers.Serializer):
                 "refresh": str(refresh),
                 "username": user.username,
                 "email": user.email,
+                "full_name": user.full_name,
+                "phone_number": user.phone_number,
                 "is_staff": user.is_staff,
                 "is_superuser": user.is_superuser,
                 "is_verified": user.is_verified,

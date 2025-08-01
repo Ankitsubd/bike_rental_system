@@ -9,6 +9,7 @@ const useAuth = () => {
       user: null,
       login: async () => {},
       logout: () => {},
+      updateUser: () => {},
       loading: false
     };
   }

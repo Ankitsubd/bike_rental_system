@@ -50,6 +50,7 @@ class Booking(models.Model):
     STATUS_CHOICES = [
            ('pending', 'Pending'),
            ('confirmed', 'Confirmed'),
+           ('in_use', 'In Use'),
            ('completed', 'Completed'),
            ('cancelled', 'Cancelled'),
        ]
@@ -59,6 +60,8 @@ class Booking(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     total_price = models.DecimalField(max_digits=8, decimal_places=2)
+    actual_end_time = models.DateTimeField(null=True, blank=True)
+    actual_total_price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
 

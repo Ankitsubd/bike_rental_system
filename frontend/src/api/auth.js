@@ -99,6 +99,8 @@ export const clearAuthData = () => {
   localStorage.removeItem('role');
   localStorage.removeItem('email');
   localStorage.removeItem('username');
+  localStorage.removeItem('full_name');
+  localStorage.removeItem('phone_number');
   localStorage.removeItem('is_staff');
   localStorage.removeItem('is_superuser');
   localStorage.removeItem('is_verified');
@@ -112,7 +114,7 @@ export const loginAPI = async ({ email, password }) => {
     
     const res = await api.post('login/', { email, password });
     
-    const { access, refresh, is_staff, is_superuser, username, is_verified } = res.data;
+    const { access, refresh, is_staff, is_superuser, username, is_verified, full_name, phone_number } = res.data;
 
     if (!access || !refresh) {
       throw new Error("Incomplete response from server");
@@ -124,6 +126,8 @@ export const loginAPI = async ({ email, password }) => {
     localStorage.setItem('role', (is_staff || is_superuser) ? 'admin' : 'customer');
     localStorage.setItem('email', email);
     localStorage.setItem('username', username);
+    localStorage.setItem('full_name', full_name || '');
+    localStorage.setItem('phone_number', phone_number || '');
     localStorage.setItem('is_staff', is_staff);
     localStorage.setItem('is_superuser', is_superuser);
     localStorage.setItem('is_verified', is_verified);

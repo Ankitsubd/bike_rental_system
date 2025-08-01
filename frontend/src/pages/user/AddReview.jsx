@@ -64,15 +64,25 @@ const AddReview = () => {
       
       await api.post('reviews/create/', reviewDataToSend);
 
-      // Navigate back to bookings page with success message
-      navigate('/user/bookings', { 
-        state: { 
-          message: location.state?.fromEndRide 
-            ? 'Ride completed and review submitted successfully!' 
-            : 'Review submitted successfully!',
-          fromReview: true 
-        } 
-      });
+      // Navigate based on the source
+      if (location.state?.redirectTo) {
+        // Redirect to specified page (e.g., bikes page)
+        navigate(location.state.redirectTo, { 
+          state: { 
+            message: 'Review submitted successfully!' 
+          } 
+        });
+      } else {
+        // Navigate back to bookings page with success message
+        navigate('/user/bookings', { 
+          state: { 
+            message: location.state?.fromEndRide 
+              ? 'Ride completed and review submitted successfully!' 
+              : 'Review submitted successfully!',
+            fromReview: true 
+          } 
+        });
+      }
 
     } catch (error) {
       console.error('Error submitting review:', error);
