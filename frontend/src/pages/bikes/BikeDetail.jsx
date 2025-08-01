@@ -72,11 +72,20 @@ const BikeDetail = () => {
 
     try {
       await api.post('book/', { bike: id, ...bookingData });
-      setMessage('Booking successful!');
+      setMessage('Booking successful! Redirecting to My Bookings...');
       setBookingData({ start_time: '', end_time: '' });
       setPrice(0);
+      
+      // Redirect to My Bookings page after successful booking
+      setTimeout(() => {
+        navigate('/user/bookings');
+      }, 1500);
     } catch (err) {
-      setMessage('Booking failed: ' + (err.response?.data?.error || 'Try again later.'));
+      if (err.response?.status === 409) {
+        setMessage('This bike is already booked for the selected time period. Please choose a different time or bike.');
+      } else {
+        setMessage('Booking failed: ' + (err.response?.data?.error || 'Try again later.'));
+      }
     }
   };
 

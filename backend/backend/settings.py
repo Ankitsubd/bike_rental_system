@@ -137,6 +137,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTHENTICATION_BACKENDS = [
+    'rental_api.backends.EmailBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 

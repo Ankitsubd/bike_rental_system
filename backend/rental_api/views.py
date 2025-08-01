@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions, status, filters
+from rest_framework import viewsets, permissions, status, filters, serializers
 from rest_framework.views import APIView
 from rest_framework.generics import UpdateAPIView, ListAPIView
 from rest_framework.response import Response
@@ -22,13 +22,16 @@ from django.db.models import Count, Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from jwt import decode as jwtDecode
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .utils import generate_verification_token, generate_reset_token
 from .permissions import IsOwnerOrAdmin, IsAdminUser, IsVerifiedUser
-from .models import Bike, Booking, Review
+from .models import Bike, Booking, Review, Analytics
 from .serializers import (
     UserSerializer, RegisterSerializer, LoginSerializer, ChangePasswordSerializer,
-    BikeSerializer, BookingSerializer, AdminBookingSerializer, ReviewSerializer, SetNewPasswordSerializer
+    BikeSerializer, BookingSerializer, AdminBookingSerializer, ReviewSerializer, SetNewPasswordSerializer, AnalyticsSerializer,
+    AdminUserCreateSerializer
 )
 
 User = get_user_model()
@@ -143,13 +146,43 @@ class VerifyEmailView(APIView):
 
 
 class UserLoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
     def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        try:
+            serializer = LoginSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            # Provide more specific error messages
+            error_message = "Password Incorrect. Please try again."
+            if 'email' in e.detail:
+                error_message = "Please enter a valid email address"
+            elif 'password' in e.detail:
+                error_message = "Password is required"
+            elif 'non_field_errors' in e.detail:
+                # Handle authentication errors specifically
+                auth_error = e.detail['non_field_errors'][0]
+                if any(keyword in auth_error.lower() for keyword in ['password', 'credentials', 'invalid', 'incorrect']):
+                    error_message = "Password Incorrect. Please try again."
+                else:
+                    error_message = auth_error
+            
+            return Response(
+                {"non_field_errors": [error_message]}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            print(f"Login error: {e}")
+            return Response(
+                {"non_field_errors": ["Server error. Please try again in a few moments."]}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
     def post(self, request):
         email = request.data.get("email")
         if not email:
@@ -158,13 +191,15 @@ class PasswordResetRequestView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+            # Don't reveal if user exists or not for security
+            return Response({"message": "If an account with this email exists, a password reset link has been sent."}, status=status.HTTP_200_OK)
 
-        token = generate_reset_token(user.email)
-        reset_link = f"http://localhost:5173/reset-password?token={token}"
+        try:
+            token = generate_reset_token(user.email)
+            reset_link = f"http://localhost:5173/reset-password?token={token}"
 
-        # Create a more professional email message
-        email_message = f"""
+            # Create a more professional email message
+            email_message = f"""
 Hello {user.username or user.email},
 
 You have requested to reset your password for your Bike Rental account.
@@ -178,16 +213,19 @@ If you didn't request this password reset, please ignore this email.
 
 Best regards,
 Bike Rental Team
-        """
+            """
 
-        send_mail(
-            subject="Reset your Bike Rental password",
-            message=email_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-        return Response({"message": "Password reset link sent to your email."}, status=status.HTTP_200_OK)
+            send_mail(
+                subject="Reset your Bike Rental password",
+                message=email_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            return Response({"message": "Password reset link sent to your email."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"Error sending password reset email: {e}")
+            return Response({"error": "Failed to send reset email. Please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SetNewPasswordView(APIView):
@@ -236,7 +274,7 @@ class ChangePasswordView(UpdateAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             if not user.check_password(serializer.data.get("old_password")):
-                return Response({"old_password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"old_password": ["Old password wrong please input current password."]}, status=status.HTTP_400_BAD_REQUEST)
             user.set_password(serializer.data.get("new_password"))
             user.save()
             return Response({"message": "Password updated successfully"}, status=status.HTTP_200_OK)
@@ -300,7 +338,10 @@ class BookingCreateView(APIView):
         ).exists()
 
         if conflict:
-            return Response({'error': 'Bike already booked during this time.'}, status=status.HTTP_409_CONFLICT)
+            return Response({
+                'error': 'This bike is already booked for the selected time period. Please choose a different time or bike.',
+                'details': 'The bike has conflicting bookings during your selected time range.'
+            }, status=status.HTTP_409_CONFLICT)
 
         fmt_start = timezone.datetime.fromisoformat(start_time)
         fmt_end = timezone.datetime.fromisoformat(end_time)
@@ -559,6 +600,42 @@ class AdminUserDetailView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
+    def put(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            
+            # Update basic fields
+            if 'username' in request.data:
+                user.username = request.data['username']
+            if 'email' in request.data:
+                user.email = request.data['email']
+            
+            # Update password if provided
+            if 'password' in request.data and request.data['password']:
+                user.set_password(request.data['password'])
+            
+            # Update role if provided
+            if 'role' in request.data:
+                role = request.data['role']
+                if role == 'admin':
+                    user.is_staff = True
+                    user.is_superuser = True
+                else:
+                    user.is_staff = False
+                    user.is_superuser = False
+            
+            user.save()
+            
+            return Response({
+                'message': 'User updated successfully',
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 # Admin: Delete Booking
 class AdminBookingDeleteView(APIView):
     permission_classes = [IsAdminUser]
@@ -576,12 +653,9 @@ class AdminUserCreateView(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
+        serializer = AdminUserCreateSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # Auto-verify users created by admin
-            user.is_verified = True
-            user.save()
             return Response({
                 "message": "User created successfully",
                 "user_id": user.id
@@ -630,6 +704,26 @@ class AdminDashboardStatsView(APIView):
                 total=Sum('total_price')
             )['total'] or 0
             
+            # Daily revenue (today)
+            today = timezone.now().date()
+            daily_revenue = Booking.objects.filter(
+                status='completed',
+                created_at__date=today
+            ).aggregate(
+                total=Sum('total_price')
+            )['total'] or 0
+            
+            # Monthly revenue (current month)
+            current_month = timezone.now().month
+            current_year = timezone.now().year
+            monthly_revenue = Booking.objects.filter(
+                status='completed',
+                created_at__month=current_month,
+                created_at__year=current_year
+            ).aggregate(
+                total=Sum('total_price')
+            )['total'] or 0
+            
             # Average rating
             from django.db.models import Avg
             avg_rating = Review.objects.aggregate(avg_rating=Avg('rating'))['avg_rating'] or 0
@@ -664,6 +758,8 @@ class AdminDashboardStatsView(APIView):
                 
                 # Financial and quality metrics
                 "total_revenue": float(total_revenue),
+                "daily_revenue": float(daily_revenue),
+                "monthly_revenue": float(monthly_revenue),
                 "avg_rating": round(avg_rating, 1),
                 
                 # Calculated percentages
@@ -709,6 +805,8 @@ class ReviewListView(APIView):
     """
     Public endpoint to list reviews with optional bike filtering
     """
+    permission_classes = [permissions.AllowAny]
+    
     def get(self, request):
         # Get bike filter from query parameters
         bike_id = request.query_params.get('bike')
@@ -760,10 +858,10 @@ class AnalyticsTrackView(APIView):
 
             # Create analytics entry
             analytics_data = {
-                'action': request.data.get('action'),
-                'page': request.data.get('page'),
+                'action': request.data.get('action', ''),
+                'page': request.data.get('page', ''),
                 'user': request.user if request.user.is_authenticated else None,
-                'ip_address': ip,
+                'ip_address': ip or '',
                 'user_agent': request.META.get('HTTP_USER_AGENT', '')
             }
 
@@ -772,10 +870,12 @@ class AnalyticsTrackView(APIView):
                 serializer.save()
                 return Response({'message': 'Analytics tracked successfully'}, status=201)
             else:
+                print(f"Analytics serializer errors: {serializer.errors}")
                 return Response(serializer.errors, status=400)
 
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            print(f"Analytics tracking error: {e}")
+            return Response({'error': 'Failed to track analytics'}, status=500)
 
 
 class AdminAnalyticsView(APIView):
@@ -802,6 +902,99 @@ class AdminAnalyticsView(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+
+
+class TokenRefreshView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh')
+            if not refresh_token:
+                return Response({'error': 'Refresh token is required'}, status=400)
+            
+            try:
+                # Use the refresh token directly to get a new access token
+                refresh = RefreshToken(refresh_token)
+                access_token = str(refresh.access_token)
+                
+                return Response({
+                    'access': access_token,
+                    'refresh': str(refresh)
+                }, status=200)
+                
+            except Exception as e:
+                print(f"Token refresh error: {e}")
+                return Response({'error': 'Invalid refresh token'}, status=400)
+                
+        except Exception as e:
+            print(f"Token refresh failed: {e}")
+            return Response({'error': 'Token refresh failed'}, status=500)
+
+
+class SystemStatusView(APIView):
+    permission_classes = [IsAdminUser]
+    
+    def get(self, request):
+        try:
+            # Check database connectivity
+            from django.db import connection
+            from django.db.utils import OperationalError
+            
+            db_status = "online"
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                    cursor.fetchone()
+            except OperationalError:
+                db_status = "offline"
+            
+            # Check if server is running
+            server_status = "online"
+            
+            # Check if there are any critical errors in logs (simplified check)
+            # In a real implementation, you might check log files or error tracking
+            error_count = 0  # This could be implemented to check actual error logs
+            
+            # Determine overall system status
+            if db_status == "online" and server_status == "online" and error_count == 0:
+                overall_status = "Online & Secure"
+                status_color = "emerald"
+                status_icon = "🟢"
+            elif db_status == "offline":
+                overall_status = "Database Offline"
+                status_color = "red"
+                status_icon = "🔴"
+            else:
+                overall_status = "System Issues Detected"
+                status_color = "yellow"
+                status_icon = "🟡"
+            
+            return Response({
+                'overall_status': overall_status,
+                'status_color': status_color,
+                'status_icon': status_icon,
+                'components': {
+                    'database': db_status,
+                    'server': server_status,
+                    'errors': error_count
+                },
+                'last_check': timezone.now().isoformat()
+            })
+            
+        except Exception as e:
+            return Response({
+                'overall_status': 'System Error',
+                'status_color': 'red',
+                'status_icon': '🔴',
+                'components': {
+                    'database': 'unknown',
+                    'server': 'unknown',
+                    'errors': 1
+                },
+                'last_check': timezone.now().isoformat(),
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 

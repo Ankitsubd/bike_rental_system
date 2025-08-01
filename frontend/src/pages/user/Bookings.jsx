@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FaCalendarAlt, FaClock, FaDollarSign, FaMapMarkerAlt, FaStar, FaCheckCircle, FaTimes, FaPlay, FaStop, FaBan, FaEdit, FaBicycle } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaDollarSign, FaMapMarkerAlt, FaStar, FaCheckCircle, FaTimes, FaPlay, FaStop, FaBan, FaEdit, FaBicycle, FaHistory, FaShieldAlt } from 'react-icons/fa';
 import api from '../../api/axios';
 import { cancelBooking, startRide, endRide } from '../../api/bookings';
 import Spinner from '../../components/Spinner';
@@ -100,6 +100,8 @@ const Bookings = () => {
         alert('Failed to start ride. Please try again.');
       } else if (action === 'end') {
         alert('Failed to end ride. Please try again.');
+      } else {
+        alert('Failed to cancel booking. Please try again.');
       }
     } finally {
       setActionLoading(prev => ({ ...prev, [bookingId]: false }));
@@ -118,7 +120,7 @@ const Bookings = () => {
       bookingId,
       title: 'Start Ride',
       message: 'Are you ready to start your ride?',
-      confirmText: 'Yes, Start',
+      confirmText: 'Yes, Start Ride',
       confirmColor: 'bg-blue-600 hover:bg-blue-700'
     });
   };
@@ -130,59 +132,47 @@ const Bookings = () => {
       bookingId,
       title: 'End Ride',
       message: 'Are you sure you want to end your ride?',
-      confirmText: 'Yes, End',
+      confirmText: 'Yes, End Ride',
       confirmColor: 'bg-orange-600 hover:bg-orange-700'
     });
   };
 
   const handleWriteReview = (booking) => {
-    // Navigate to dedicated review page with booking data
-    navigate('/user/review', { 
-      state: { 
-        booking: booking,
-        fromBookings: true 
-      } 
-    });
+    navigate('/user/review', { state: { booking } });
   };
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
       case 'confirmed':
-        return 'bg-sky-100 text-sky-800 border-sky-200';
-      case 'in_use':
         return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'in_progress':
-        return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'in_use':
+        return 'bg-green-100 text-green-800 border-green-200';
       case 'completed':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200';
       default:
-        return 'bg-slate-100 text-slate-800 border-slate-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status.toLowerCase()) {
       case 'confirmed':
-        return <FaCheckCircle className="w-5 h-5" />;
+        return <FaCheckCircle className="w-4 h-4" />;
       case 'in_use':
-        return <FaBicycle className="w-5 h-5" />;
-      case 'in_progress':
-        return <FaClock className="w-5 h-5" />;
+        return <FaPlay className="w-4 h-4" />;
       case 'completed':
-        return <FaCheckCircle className="w-5 h-5" />;
+        return <FaStar className="w-4 h-4" />;
       case 'cancelled':
-        return <FaTimes className="w-5 h-5" />;
+        return <FaBan className="w-4 h-4" />;
       default:
-        return <FaClock className="w-5 h-5" />;
+        return <FaClock className="w-4 h-4" />;
     }
   };
 
-
-
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -194,29 +184,31 @@ const Bookings = () => {
   const calculateDuration = (startTime, endTime) => {
     const start = new Date(startTime);
     const end = new Date(endTime);
-    const diffMs = end - start;
-    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
-    return diffHours;
+    const diffInHours = (end - start) / (1000 * 60 * 60);
+    return Math.ceil(diffInHours);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-cyan-50 flex items-center justify-center">
-        <Spinner />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your bookings...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-cyan-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Oops!</h2>
-          <p className="text-slate-600 mb-4">{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <div className="text-8xl mb-6 animate-bounce">⚠️</div>
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Oops!</h2>
+          <p className="text-gray-600 mb-8 text-lg">{error}</p>
           <button
             onClick={fetchBookings}
-            className="bg-sky-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-sky-700 transition-colors duration-300"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
             Try Again
           </button>
@@ -226,17 +218,27 @@ const Bookings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-delay-1"></div>
+        <div className="absolute top-40 left-40 w-80 h-80 bg-indigo-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-delay-2"></div>
+      </div>
+
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">My Current Bookings</h1>
-          <p className="text-gray-600">Manage your active bike rentals and track your rides</p>
+        <div className="mb-8 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <FaBicycle className="text-white text-3xl" />
+          </div>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">My Current Bookings</h1>
+          <p className="text-xl text-gray-600">Manage your active bike rentals and track your rides</p>
         </div>
 
         {/* Success Message */}
         {successMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl animate-fade-in">
             <div className="flex items-center gap-2">
               <FaCheckCircle className="w-5 h-5 text-green-600" />
               <p className="text-green-800 font-medium">{successMessage}</p>
@@ -244,85 +246,101 @@ const Bookings = () => {
           </div>
         )}
 
-
-
         {/* Bookings List */}
         {bookings.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-12 text-center">
-            <div className="text-6xl mb-4">🚲</div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-2">
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-12 text-center animate-scale-in">
+            <div className="text-8xl mb-6 animate-float">🚲</div>
+            <h3 className="text-3xl font-bold text-gray-800 mb-4">
               No Current Bookings
             </h3>
-            <p className="text-slate-600 mb-6">
+            <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">
               You don't have any active bookings at the moment. Start your adventure by booking a bike!
             </p>
             <Link
               to="/bikes"
-              className="inline-block bg-sky-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-sky-700 transition-colors duration-300"
+              className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               Browse Bikes
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6">
-            {bookings.map((booking) => (
-              <div key={booking.id} className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+          <div className="grid gap-8">
+            {bookings.map((booking, index) => (
+              <div 
+                key={booking.id} 
+                className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden animate-scale-in"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="p-8">
+                  <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center space-x-4">
-                      <div className="text-3xl">{getStatusIcon(booking.status)}</div>
+                      <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <FaBicycle className="text-white text-2xl" />
+                      </div>
                       <div>
-                        <h3 className="text-xl font-bold text-slate-800">
+                        <h3 className="text-2xl font-bold text-gray-800">
                           {booking.bike_name || 'Bike Rental'}
                         </h3>
-                        <p className="text-slate-600">
+                        <p className="text-gray-600">
                           Booking #{booking.id}
                         </p>
                       </div>
                     </div>
-                    <span className={`px-4 py-2 rounded-full text-sm font-semibold border flex items-center gap-2 ${getStatusColor(booking.status)}`}>
+                    <span className={`px-6 py-3 rounded-2xl text-sm font-semibold border flex items-center gap-2 ${getStatusColor(booking.status)}`}>
                       {getStatusIcon(booking.status)}
                       {booking.status.replace('_', ' ')}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <p className="text-sm text-slate-600 mb-1">Start Time</p>
-                      <p className="font-semibold text-slate-800">{formatDate(booking.start_time)}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                      <div className="flex items-center gap-3 mb-2">
+                        <FaCalendarAlt className="text-blue-600" />
+                        <p className="text-sm text-gray-600">Start Time</p>
+                      </div>
+                      <p className="font-bold text-gray-800">{formatDate(booking.start_time)}</p>
                     </div>
                     
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <p className="text-sm text-slate-600 mb-1">End Time</p>
-                      <p className="font-semibold text-slate-800">{formatDate(booking.end_time)}</p>
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
+                      <div className="flex items-center gap-3 mb-2">
+                        <FaClock className="text-green-600" />
+                        <p className="text-sm text-gray-600">End Time</p>
+                      </div>
+                      <p className="font-bold text-gray-800">{formatDate(booking.end_time)}</p>
                     </div>
                     
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <p className="text-sm text-slate-600 mb-1">Duration</p>
-                      <p className="font-semibold text-slate-800">
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+                      <div className="flex items-center gap-3 mb-2">
+                        <FaClock className="text-purple-600" />
+                        <p className="text-sm text-gray-600">Duration</p>
+                      </div>
+                      <p className="font-bold text-gray-800">
                         {calculateDuration(booking.start_time, booking.end_time)} hours
                       </p>
                     </div>
                     
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <p className="text-sm text-slate-600 mb-1">Total Price</p>
-                      <p className="font-semibold text-sky-600">
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 border border-orange-100">
+                      <div className="flex items-center gap-3 mb-2">
+                        <FaDollarSign className="text-orange-600" />
+                        <p className="text-sm text-gray-600">Total Price</p>
+                      </div>
+                      <p className="font-bold text-blue-600">
                         Rs. {booking.total_price || 'N/A'}
                       </p>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-4">
                     {booking.status.toLowerCase() === 'confirmed' && (
                       <>
                         <button
                           onClick={() => handleStartRide(booking.id)}
                           disabled={actionLoading[booking.id]}
-                          className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-2xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transform hover:scale-105 shadow-lg"
                         >
                           {actionLoading[booking.id] ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                           ) : (
                             <FaPlay className="w-4 h-4" />
                           )}
@@ -331,10 +349,10 @@ const Bookings = () => {
                         <button
                           onClick={() => handleCancel(booking.id)}
                           disabled={actionLoading[booking.id]}
-                          className="bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          className="bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-3 rounded-2xl font-semibold hover:from-red-700 hover:to-red-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transform hover:scale-105 shadow-lg"
                         >
                           {actionLoading[booking.id] ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                           ) : (
                             <FaTimes className="w-4 h-4" />
                           )}
@@ -347,10 +365,10 @@ const Bookings = () => {
                       <button
                         onClick={() => handleEndRide(booking.id)}
                         disabled={actionLoading[booking.id]}
-                        className="bg-orange-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="bg-gradient-to-r from-orange-600 to-orange-700 text-white px-8 py-3 rounded-2xl font-semibold hover:from-orange-700 hover:to-orange-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transform hover:scale-105 shadow-lg"
                       >
                         {actionLoading[booking.id] ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                         ) : (
                           <FaStop className="w-4 h-4" />
                         )}
@@ -361,7 +379,7 @@ const Bookings = () => {
                     {booking.status.toLowerCase() === 'completed' && (
                       <button
                         onClick={() => handleWriteReview(booking)}
-                        className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors duration-300 flex items-center gap-2"
+                        className="bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-3 rounded-2xl font-semibold hover:from-green-700 hover:to-green-800 transition-all duration-300 flex items-center gap-2 transform hover:scale-105 shadow-lg"
                       >
                         <FaEdit className="w-4 h-4" />
                         Write Review
@@ -370,8 +388,9 @@ const Bookings = () => {
                     
                     <Link
                       to={`/bikes/${booking.bike}`}
-                      className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-300"
+                      className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-2xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 transform hover:scale-105 shadow-lg"
                     >
+                      <FaBicycle className="w-4 h-4" />
                       View Bike Details
                     </Link>
                   </div>
@@ -383,14 +402,25 @@ const Bookings = () => {
 
         {/* Quick Actions */}
         {bookings.length > 0 && (
-          <div className="mt-8 bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Quick Actions</h3>
+          <div className="mt-8 bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 animate-scale-in">
+            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+              <FaShieldAlt className="text-blue-600" />
+              Quick Actions
+            </h3>
             <div className="flex flex-wrap gap-4">
               <Link
                 to="/bikes"
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-300"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center gap-2"
               >
+                <FaBicycle className="w-4 h-4" />
                 Book Another Bike
+              </Link>
+              <Link
+                to="/user/rental-history"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-3 rounded-2xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center gap-2"
+              >
+                <FaHistory className="w-4 h-4" />
+                View History
               </Link>
             </div>
           </div>

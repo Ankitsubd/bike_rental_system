@@ -1,14 +1,53 @@
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const { user, logout, loading } = useContext(AuthContext);
+  const [isVisible, setIsVisible] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const authContext = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Safely destructure with fallbacks
+  const { user = null, logout = () => {}, loading = false } = authContext || {};
+
+  // Scroll detection
+  useEffect(() => {
+    let timeoutId;
+    
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Clear previous timeout
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      // Show navbar when scrolling down, hide when scrolling up
+      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        setIsVisible(true);
+      } else if (currentScrollY < lastScrollY) {
+        // Add small delay when hiding to prevent flickering
+        timeoutId = setTimeout(() => {
+          setIsVisible(false);
+        }, 100);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [lastScrollY]);
 
   // Check if user is in admin panel
   const isInAdminPanel = location.pathname.startsWith('/admin');
@@ -21,19 +60,27 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
-  // Don't render navbar while loading
-  if (loading) {
-    return null;
-  }
-
+  // Always render navbar, even during loading
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-50 border-b border-slate-200">
+    <nav 
+      className={`bg-white shadow-lg z-50 border-b border-slate-200 transition-transform duration-300 ${
+        isVisible ? 'translate-y-0' : '-translate-y-full'
+      }`} 
+      style={{ 
+        display: 'block', 
+        minHeight: '64px',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-sky-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
               <span className="text-white text-xl font-bold">🚲</span>
             </div>
             <span className="text-2xl font-bold text-slate-800">BikeRental</span>
@@ -47,8 +94,8 @@ const Navbar = () => {
                 <Link
                   key={link.name}
                   to={link.path}
-                  className={`text-slate-700 hover:text-sky-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
-                    isActive(link.path) ? 'text-sky-600 font-semibold' : ''
+                  className={`text-slate-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
+                    isActive(link.path) ? 'text-blue-600 font-semibold' : ''
                   }`}
                 >
                   {link.name}
@@ -58,17 +105,19 @@ const Navbar = () => {
 
             {/* Auth Section */}
             <div className="flex items-center space-x-4">
-              {!user ? (
+              {loading ? (
+                <div className="text-slate-500 text-sm">Loading...</div>
+              ) : !user ? (
                 <>
                   <Link
                     to="/login"
-                    className="text-slate-700 hover:text-sky-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
+                    className="text-slate-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
                   >
                     Login
                   </Link>
                   <Link
                     to="/register"
-                    className="bg-sky-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-sky-700 transition-colors duration-300"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors duration-300"
                   >
                     Get Started
                   </Link>
@@ -78,10 +127,10 @@ const Navbar = () => {
                   {/* User Menu Button */}
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center space-x-2 text-slate-700 hover:text-sky-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
+                    className="flex items-center space-x-2 text-slate-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
                   >
-                    <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
-                      <span className="text-sky-600 text-sm font-semibold">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 text-sm font-semibold">
                         {user.username?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
                       </span>
                     </div>
@@ -98,7 +147,7 @@ const Navbar = () => {
                         <Link
                           to="/admin/dashboard"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-colors duration-300"
+                          className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-300"
                         >
                           <span className="mr-2">👨‍💼</span>
                           Admin Panel
@@ -108,7 +157,7 @@ const Navbar = () => {
                       <Link
                         to="/user/bookings"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-colors duration-300"
+                        className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-300"
                       >
                         <span className="mr-2">📋</span>
                         My Bookings
@@ -117,7 +166,7 @@ const Navbar = () => {
                       <Link
                         to="/user/profile"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-colors duration-300"
+                        className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-300"
                       >
                         <span className="mr-2">👤</span>
                         Profile
@@ -146,7 +195,7 @@ const Navbar = () => {
           <div className="md:hidden">
             <button 
               onClick={() => setIsOpen(!isOpen)}
-              className="text-slate-700 hover:text-sky-600 p-2 rounded-md transition-colors duration-300"
+              className="text-slate-700 hover:text-blue-600 p-2 rounded-md transition-colors duration-300"
             >
               <svg
                 className="w-6 h-6"
@@ -177,8 +226,8 @@ const Navbar = () => {
                   onClick={() => setIsOpen(false)}
                   className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-300 ${
                     isActive(link.path) 
-                      ? 'text-sky-600 bg-sky-50' 
-                      : 'text-slate-700 hover:text-sky-600 hover:bg-slate-50'
+                      ? 'text-blue-600 bg-blue-50' 
+                      : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
                   }`}
                 >
                   {link.name}
@@ -191,14 +240,14 @@ const Navbar = () => {
                   <Link
                     to="/login"
                     onClick={() => setIsOpen(false)}
-                    className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-sky-600 hover:bg-slate-50 transition-colors duration-300"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-colors duration-300"
                   >
                     Login
                   </Link>
                   <Link
                     to="/register"
                     onClick={() => setIsOpen(false)}
-                    className="block px-3 py-2 rounded-md text-base font-medium bg-sky-600 text-white hover:bg-sky-700 transition-colors duration-300"
+                    className="block px-3 py-2 rounded-md text-base font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-300"
                   >
                     Get Started
                   </Link>
@@ -209,7 +258,7 @@ const Navbar = () => {
                     <Link
                       to="/admin/dashboard"
                       onClick={() => setIsOpen(false)}
-                      className="flex items-center px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-sky-600 hover:bg-slate-50 transition-colors duration-300"
+                      className="flex items-center px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-colors duration-300"
                     >
                       <span className="mr-2">👨‍💼</span>
                       Admin Panel
@@ -219,7 +268,7 @@ const Navbar = () => {
                   <Link
                     to="/user/bookings"
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-sky-600 hover:bg-slate-50 transition-colors duration-300"
+                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-colors duration-300"
                   >
                     <span className="mr-2">📋</span>
                     My Bookings
@@ -228,7 +277,7 @@ const Navbar = () => {
                   <Link
                     to="/user/profile"
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-sky-600 hover:bg-slate-50 transition-colors duration-300"
+                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-colors duration-300"
                   >
                     <span className="mr-2">👤</span>
                     Profile

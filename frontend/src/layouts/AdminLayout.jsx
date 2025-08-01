@@ -8,9 +8,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleBackToUserView = () => {
-    navigate('/');
-  };
+
 
   const handleLogout = () => {
     logout();
@@ -40,8 +38,8 @@ const AdminLayout = () => {
             {/* Logo and Title */}
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
-                  <span className="text-blue-600 text-xl">⚡</span>
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl flex items-center justify-center">
+                  <span className="text-emerald-600 text-xl">🚲</span>
                 </div>
                 <div className="hidden sm:block">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
@@ -61,12 +59,6 @@ const AdminLayout = () => {
             
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
-              <button
-                onClick={handleBackToUserView}
-                className="hidden sm:block bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
-              >
-                User View
-              </button>
               <button
                 onClick={handleLogout}
                 className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
@@ -129,15 +121,6 @@ const AdminLayout = () => {
               <div className="p-4 border-t border-slate-200 space-y-2">
                 <button
                   onClick={() => {
-                    handleBackToUserView();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300"
-                >
-                  User View
-                </button>
-                <button
-                  onClick={() => {
                     handleLogout();
                     setMobileMenuOpen(false);
                   }}
@@ -179,6 +162,66 @@ const AdminLayout = () => {
           </div>
         </main>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-white/80 backdrop-blur-sm border-t border-slate-200/60 mt-20 py-6 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            {/* Left Section */}
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-lg flex items-center justify-center">
+                <span className="text-emerald-600 text-sm">🚲</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-700">© {new Date().getFullYear()} BikeRental Admin</p>
+                <p className="text-xs text-slate-500">Administrative Dashboard</p>
+              </div>
+            </div>
+
+            {/* Center Section */}
+            <div className="text-center">
+              <p className="text-sm text-slate-600 font-medium">Built as a BIT College Project</p>
+              <p className="text-xs text-slate-500 mt-1">Advanced Web Development</p>
+            </div>
+
+            {/* Right Section */}
+            <div className="flex items-center space-x-4 text-sm text-slate-500">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <span>System Online</span>
+              </div>
+              <div className="hidden sm:block">
+                <span>•</span>
+              </div>
+              <div className="hidden sm:block">
+                <span>Admin Panel v1.0</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Section */}
+          <div className="mt-4 pt-4 border-t border-slate-200/40">
+            <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+              <div className="flex items-center space-x-6 text-xs text-slate-500">
+                <span>Dashboard</span>
+                <span>•</span>
+                <span>Analytics</span>
+                <span>•</span>
+                <span>User Management</span>
+                <span>•</span>
+                <span>Bike Management</span>
+                <span>•</span>
+                <span>Booking Management</span>
+                <span>•</span>
+                <span>Review Management</span>
+              </div>
+              <div className="text-xs text-slate-400">
+                <span>Last updated: {new Date().toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

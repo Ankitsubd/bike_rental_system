@@ -68,18 +68,105 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+class AdminUserCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    username = serializers.CharField(required=True, max_length=150)
+    email = serializers.EmailField(required=True)
+    role = serializers.CharField(required=True)
+    
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+    def validate_role(self, value):
+        if value not in ['admin', 'customer']:
+            raise serializers.ValidationError("Role must be either 'admin' or 'customer'.")
+        return value
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'role']
+
+    def create(self, validated_data):
+        role = validated_data.pop('role')
+        username = validated_data['username']
+        email = validated_data['email']
+        
+        # Set default values for required fields
+        validated_data['full_name'] = username  # Use username as full_name
+        validated_data['phone_number'] = '0000000000'  # Default phone number
+        validated_data['is_verified'] = True  # Admin-created users are auto-verified
+        
+        # Set role-based permissions
+        if role == 'admin':
+            validated_data['is_staff'] = True
+            validated_data['is_superuser'] = True
+        else:
+            validated_data['is_staff'] = False
+            validated_data['is_superuser'] = False
+        
+        user = User.objects.create(**validated_data)
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+
+
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
+    old_password = serializers.CharField(required=True, error_messages={
+        'required': 'Old password wrong please input current password.',
+        'blank': 'Old password wrong please input current password.'
+    })
     new_password = serializers.CharField(required=True, validators=[validate_password])
 
 
 class BikeSerializer(serializers.ModelSerializer):
     is_available = serializers.SerializerMethodField()
     rating_display = serializers.SerializerMethodField()
+    image = serializers.ImageField(required=False)  # Allow optional for updates
 
     class Meta:
         model = Bike
         fields = '__all__'
+
+    def validate_image(self, value):
+        """Validate image file if provided"""
+        if value is None:
+            # No image provided - this is allowed for updates
+            return value
+        
+        # Check file size (5MB limit)
+        if value.size > 5 * 1024 * 1024:
+            raise serializers.ValidationError("Image file size must be less than 5MB.")
+        
+        # Check file type
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+        if value.content_type not in allowed_types:
+            raise serializers.ValidationError("Please upload a valid image file (JPG, PNG, GIF).")
+        
+        return value
+
+    def validate(self, data):
+        """Validate all required fields"""
+        required_fields = ['name', 'brand', 'model', 'bike_type', 'price_per_hour']
+        for field in required_fields:
+            if not data.get(field):
+                raise serializers.ValidationError(f"{field.replace('_', ' ').title()} is required.")
+        
+        # Validate price is positive
+        if data.get('price_per_hour') and data['price_per_hour'] <= 0:
+            raise serializers.ValidationError("Price must be a positive number.")
+        
+        # Validate image is provided for new bikes only
+        if not self.instance and not data.get('image'):
+            raise serializers.ValidationError("Bike image is required for new bikes.")
+        
+        return data
 
     def get_is_available(self, obj):
         """Check if bike is available"""
@@ -125,6 +212,8 @@ class AdminBookingSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only=True)
     bike_name = serializers.CharField(source='bike.name', read_only=True)
+    user = UserSerializer(read_only=True)
+    bike = BikeSerializer(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
@@ -169,31 +258,28 @@ class LoginSerializer(serializers.Serializer):
         email = data.get('email')
         password = data.get('password')
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid email or password")
+        if email and password:
+            user = authenticate(request=self.context.get('request'), email=email, password=password)
+            if not user:
+                raise serializers.ValidationError("Password Incorrect. Please try again.")
+            if not user.is_active:
+                raise serializers.ValidationError("User account is disabled")
+            if not user.is_verified:
+                raise serializers.ValidationError("Email is not verified. Please check your inbox")
+            
+            refresh = RefreshToken.for_user(user)
 
-        if not user.check_password(password):
-            raise serializers.ValidationError("Invalid email or password")
+            return {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "username": user.username,
+                "email": user.email,
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser,
+                "is_verified": user.is_verified,
+            }
 
-        if not user.is_active:
-            raise serializers.ValidationError("User account is disabled")
-
-        if not user.is_verified:
-            raise serializers.ValidationError("Email is not verified. Please check your inbox")
-
-        refresh = RefreshToken.for_user(user)
-
-        return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-            "username": user.username,
-            "email": user.email,
-            "is_staff": user.is_staff,
-            "is_superuser": user.is_superuser,
-            "is_verified": user.is_verified,
-        }
+        raise serializers.ValidationError("Must include email and password.")
 
 
 class SetNewPasswordSerializer(serializers.Serializer):

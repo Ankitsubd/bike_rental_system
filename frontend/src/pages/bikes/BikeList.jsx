@@ -17,7 +17,8 @@ import {
   FaMountain,
   FaRoad,
   FaCity,
-  FaCog
+  FaCog,
+  FaShieldAlt
 } from 'react-icons/fa';
 
 // Modern SearchInput with enhanced UX
@@ -59,13 +60,13 @@ const SearchInput = ({ initialValue, onSearch, placeholder = "Search bikes..." }
   return (
     <div className="relative flex-1 group">
       <div className="relative">
-    <input
-      ref={inputRef}
-      type='text'
+        <input
+          ref={inputRef}
+          type='text'
           placeholder={placeholder}
-      value={inputValue}
-      onChange={handleChange}
-          className='w-full px-6 py-4 pl-14 pr-12 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 bg-white hover:bg-gray-50 group-hover:shadow-lg text-lg'
+          value={inputValue}
+          onChange={handleChange}
+          className='w-full px-6 py-4 pl-14 pr-12 border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white group-hover:shadow-lg text-lg'
         />
         <FaSearch className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 transition-colors duration-300 group-hover:text-blue-500 text-lg" />
         {inputValue && (
@@ -111,7 +112,7 @@ const FilterSection = ({ typeFilter, statusFilter, sortBy, onFilterChange, onCle
   ];
 
   return (
-    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-8 animate-fade-in">
+    <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 mb-8 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-800 flex items-center gap-3">
@@ -138,7 +139,7 @@ const FilterSection = ({ typeFilter, statusFilter, sortBy, onFilterChange, onCle
             <select
               value={typeFilter}
               onChange={(e) => onFilterChange('type', e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 appearance-none bg-white"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 appearance-none bg-white/80 backdrop-blur-sm"
             >
               {bikeTypes.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -159,7 +160,7 @@ const FilterSection = ({ typeFilter, statusFilter, sortBy, onFilterChange, onCle
             <select
               value={statusFilter}
               onChange={(e) => onFilterChange('status', e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 appearance-none bg-white"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 appearance-none bg-white/80 backdrop-blur-sm"
             >
               {statusOptions.map((status) => (
                 <option key={status.value} value={status.value}>
@@ -180,7 +181,7 @@ const FilterSection = ({ typeFilter, statusFilter, sortBy, onFilterChange, onCle
             <select
               value={sortBy}
               onChange={(e) => onFilterChange('sort', e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 appearance-none bg-white"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 appearance-none bg-white/80 backdrop-blur-sm"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -245,7 +246,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
           disabled={page === '...'}
           className={`px-4 py-3 rounded-xl border-2 transition-all duration-300 font-medium ${
             page === currentPage
-              ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
+              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-blue-600 shadow-lg'
               : page === '...'
               ? 'border-gray-200 text-gray-500 cursor-default'
               : 'border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
@@ -280,9 +281,9 @@ const BikeList = () => {
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || '');
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (typeFilter) params.append('bike_type', typeFilter);
@@ -293,14 +294,14 @@ const BikeList = () => {
       const response = await api.get(`bikes/?${params.toString()}`);
       setBikes(response.data.results || response.data);
       setTotalPages(Math.ceil((response.data.count || response.data.length) / 12));
-        setError('');
-      } catch (error) {
+      setError('');
+    } catch (error) {
       setError('Failed to load bikes.');
-        console.error('Error fetching bikes:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      console.error('Error fetching bikes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Scroll to top when component mounts
@@ -354,7 +355,7 @@ const BikeList = () => {
 
   if (loading && bikes.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-600 border-t-transparent mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Loading Bikes</h2>
@@ -366,27 +367,37 @@ const BikeList = () => {
 
   if (error && bikes.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto">
           <div className="text-8xl mb-6 animate-bounce">🚲</div>
           <h2 className="text-3xl font-bold text-gray-800 mb-4">Oops!</h2>
           <p className="text-gray-600 mb-8 text-lg">{error}</p>
-      <button
+          <button
             onClick={fetchData}
-            className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-semibold hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
             Try Again
-      </button>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-delay-1"></div>
+        <div className="absolute top-40 left-40 w-80 h-80 bg-indigo-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-delay-2"></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Enhanced Header */}
         <div className="mb-12 text-center animate-fade-in">
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <FaBicycle className="text-white text-3xl" />
+          </div>
           <h1 className="text-5xl font-bold text-gray-800 mb-4">
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Explore Our Bikes
@@ -398,9 +409,9 @@ const BikeList = () => {
           
           {/* Enhanced Search Bar */}
           <div className="max-w-3xl mx-auto mb-8">
-        <SearchInput 
+            <SearchInput 
               initialValue={searchTerm}
-          onSearch={handleSearch}
+              onSearch={handleSearch}
               placeholder="Search by name, brand, type, or features..."
             />
           </div>
@@ -424,26 +435,29 @@ const BikeList = () => {
             <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">
               Try adjusting your search criteria or filters to find what you're looking for.
             </p>
-          <button
+            <button
               onClick={handleClearFilters}
-              className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-semibold hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-          >
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+            >
               Clear All Filters
-          </button>
-      </div>
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {bikes.map((bike, index) => (
               <div
                 key={bike.id}
-                className="animate-scale-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                className="animate-scale-in transform transition-all duration-500 ease-in-out hover:scale-105 hover:shadow-2xl"
+                style={{ 
+                  animationDelay: `${index * 0.1}s`,
+                  transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
               >
                 <BikeCard bike={bike} />
               </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
         {/* Enhanced Pagination */}
         <Pagination
@@ -451,7 +465,7 @@ const BikeList = () => {
           totalPages={totalPages}
           onPageChange={setCurrentPage}
         />
-        </div>
+      </div>
     </div>
   );
 };

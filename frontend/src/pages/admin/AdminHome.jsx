@@ -3,11 +3,16 @@ import { Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
-import { FaUsers, FaBicycle, FaClipboardList, FaStar, FaMoneyBillWave, FaChartLine, FaCheckCircle, FaClock, FaTools, FaExclamationTriangle } from 'react-icons/fa';
+import { FaStar, FaMoneyBillWave, FaChartLine, FaCheckCircle, FaClock, FaCalendarDay, FaCalendarAlt, FaBicycle, FaClipboardList, FaUsers } from 'react-icons/fa';
 
 const AdminHome = () => {
   const [stats, setStats] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
+  const [systemStatus, setSystemStatus] = useState({
+    overall_status: 'Online & Secure',
+    status_color: 'emerald',
+    status_icon: '🟢'
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { user } = useAuth();
@@ -24,6 +29,15 @@ const AdminHome = () => {
         // Fetch all users
         const usersRes = await api.get('admin/users/');
         setAllUsers(usersRes.data || []);
+        
+        // Fetch system status
+        try {
+          const statusRes = await api.get('admin/system-status/');
+          setSystemStatus(statusRes.data);
+        } catch (statusErr) {
+          console.error('Error fetching system status:', statusErr);
+          // Keep default status if fetch fails
+        }
         
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -48,8 +62,8 @@ const AdminHome = () => {
       {/* Welcome Section */}
       <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-200/60 rounded-3xl shadow-xl p-10">
         <div className="flex items-center space-x-6 mb-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center border border-blue-200/50 shadow-lg">
-            <span className="text-blue-600 text-4xl">👨‍💼</span>
+          <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center border border-emerald-200/50 shadow-lg">
+            <span className="text-emerald-600 text-4xl">🚲</span>
           </div>
           <div>
             <h1 className="text-5xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
@@ -66,73 +80,48 @@ const AdminHome = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-3 text-slate-500">
-          <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse shadow-sm"></div>
-          <span className="text-sm font-medium">System Status: Online & Secure</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3 text-slate-500">
+            <div className={`w-3 h-3 bg-${systemStatus.status_color}-400 rounded-full animate-pulse shadow-sm`}></div>
+            <span className="text-sm font-medium">
+              System Status: {systemStatus.overall_status}
+            </span>
+          </div>
+          {systemStatus.components && (
+            <div className="flex items-center space-x-4 text-xs text-slate-400">
+              <span>DB: {systemStatus.components.database}</span>
+              <span>Server: {systemStatus.components.server}</span>
+              {systemStatus.components.errors > 0 && (
+                <span className="text-red-500">Errors: {systemStatus.components.errors}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <div className="bg-gradient-to-br from-white to-blue-50/50 border border-blue-200/40 text-slate-900 p-8 rounded-3xl shadow-lg transform hover:scale-105 transition-all duration-500 hover:shadow-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-semibold uppercase tracking-wide">Total Users</p>
-              <p className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{stats?.total_users || 0}</p>
-              <p className="text-sm text-slate-500 mt-1">
-                {stats?.customer_users || 0} customers, {stats?.admin_users || 0} admins
-              </p>
-            </div>
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center border border-blue-200/50 shadow-lg">
-              <FaUsers className="text-blue-600 text-3xl" />
-            </div>
-          </div>
+
+
+      {/* Revenue Summary */}
+      <div className="bg-gradient-to-br from-white to-amber-50/50 border border-amber-200/60 rounded-3xl shadow-xl p-8">
+        <div className="flex items-center space-x-3 mb-6">
+          <FaMoneyBillWave className="text-amber-600 text-2xl" />
+          <h3 className="text-2xl font-bold text-slate-800">Revenue Summary</h3>
         </div>
-        
-        <div className="bg-gradient-to-br from-white to-emerald-50/50 border border-emerald-200/40 text-slate-900 p-8 rounded-3xl shadow-lg transform hover:scale-105 transition-all duration-500 hover:shadow-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-semibold uppercase tracking-wide">Total Bikes</p>
-              <p className="text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{stats?.total_bikes || 0}</p>
-              <p className="text-sm text-slate-500 mt-1">
-                {stats?.available_bikes || 0} available
-              </p>
-            </div>
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center border border-emerald-200/50 shadow-lg">
-              <FaBicycle className="text-emerald-600 text-3xl" />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center p-6 bg-white rounded-2xl border border-amber-200/50 shadow-lg">
+            <p className="text-sm text-amber-600 font-semibold mb-2">Total Revenue</p>
+            <p className="text-3xl font-bold text-amber-800">Rs. {stats?.total_revenue || 0}</p>
+            <p className="text-xs text-slate-500 mt-1">All time earnings</p>
           </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-white to-purple-50/50 border border-purple-200/40 text-slate-900 p-8 rounded-3xl shadow-lg transform hover:scale-105 transition-all duration-500 hover:shadow-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-semibold uppercase tracking-wide">Total Bookings</p>
-              <p className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">{stats?.total_bookings || 0}</p>
-              <p className="text-sm text-slate-500 mt-1">
-                {stats?.completed_bookings || 0} completed
-              </p>
-            </div>
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-violet-100 rounded-2xl flex items-center justify-center border border-purple-200/50 shadow-lg">
-              <FaClipboardList className="text-purple-600 text-3xl" />
-            </div>
+          <div className="text-center p-6 bg-white rounded-2xl border border-green-200/50 shadow-lg">
+            <p className="text-sm text-green-600 font-semibold mb-2">Today's Revenue</p>
+            <p className="text-3xl font-bold text-green-800">Rs. {stats?.daily_revenue || 0}</p>
+            <p className="text-xs text-slate-500 mt-1">Today's earnings</p>
           </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-white to-amber-50/50 border border-amber-200/40 text-slate-900 p-8 rounded-3xl shadow-lg transform hover:scale-105 transition-all duration-500 hover:shadow-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-semibold uppercase tracking-wide">Total Revenue</p>
-              <p className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                Rs. {stats?.total_revenue || 0}
-              </p>
-              <p className="text-sm text-slate-500 mt-1">
-                Avg. Rating: {stats?.avg_rating || 0}/5
-              </p>
-            </div>
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center border border-amber-200/50 shadow-lg">
-              <FaMoneyBillWave className="text-amber-600 text-3xl" />
-            </div>
+          <div className="text-center p-6 bg-white rounded-2xl border border-blue-200/50 shadow-lg">
+            <p className="text-sm text-blue-600 font-semibold mb-2">Monthly Revenue</p>
+            <p className="text-3xl font-bold text-blue-800">Rs. {stats?.monthly_revenue || 0}</p>
+            <p className="text-xs text-slate-500 mt-1">This month's earnings</p>
           </div>
         </div>
       </div>
@@ -169,20 +158,7 @@ const AdminHome = () => {
               </div>
               <span className="text-2xl font-bold text-blue-600">{stats?.in_use_bikes || 0}</span>
             </div>
-            <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-200">
-              <div className="flex items-center space-x-3">
-                <FaTools className="text-red-600" />
-                <span className="font-semibold text-red-800">Maintenance</span>
-              </div>
-              <span className="text-2xl font-bold text-red-600">{stats?.maintenance_bikes || 0}</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <div className="flex items-center space-x-3">
-                <FaExclamationTriangle className="text-gray-600" />
-                <span className="font-semibold text-gray-800">Offline</span>
-              </div>
-              <span className="text-2xl font-bold text-gray-600">{stats?.offline_bikes || 0}</span>
-            </div>
+
           </div>
         </div>
 
@@ -232,44 +208,7 @@ const AdminHome = () => {
         </div>
       </div>
 
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="bg-gradient-to-br from-white to-blue-50/50 border border-blue-200/40 text-slate-900 p-6 rounded-3xl shadow-lg">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center border border-blue-200/50 shadow-lg">
-              <FaChartLine className="text-blue-600 text-xl" />
-            </div>
-            <div>
-              <p className="text-slate-500 text-sm font-semibold">Bike Utilization</p>
-              <p className="text-3xl font-bold text-blue-600">{stats?.bike_utilization_rate || 0}%</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-white to-emerald-50/50 border border-emerald-200/40 text-slate-900 p-6 rounded-3xl shadow-lg">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl flex items-center justify-center border border-emerald-200/50 shadow-lg">
-              <FaCheckCircle className="text-emerald-600 text-xl" />
-            </div>
-            <div>
-              <p className="text-slate-500 text-sm font-semibold">Completion Rate</p>
-              <p className="text-3xl font-bold text-emerald-600">{stats?.booking_completion_rate || 0}%</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-white to-purple-50/50 border border-purple-200/40 text-slate-900 p-6 rounded-3xl shadow-lg">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-violet-100 rounded-xl flex items-center justify-center border border-purple-200/50 shadow-lg">
-              <FaUsers className="text-purple-600 text-xl" />
-            </div>
-            <div>
-              <p className="text-slate-500 text-sm font-semibold">Verification Rate</p>
-              <p className="text-3xl font-bold text-purple-600">{stats?.user_verification_rate || 0}%</p>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* Admin Management Section */}
       <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-3xl shadow-xl border border-slate-200/60 overflow-hidden">

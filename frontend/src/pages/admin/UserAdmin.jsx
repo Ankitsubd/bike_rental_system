@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import SuccessNotification from '../../components/SuccessNotification';
 
 const UserAdmin = () => {
   const [users, setUsers] = useState([]);
@@ -28,6 +30,17 @@ const UserAdmin = () => {
   // Mobile responsive states
   const [showFilters, setShowFilters] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  
+  // Modal and notification states
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [notification, setNotification] = useState({
+    isVisible: false,
+    message: '',
+    type: 'success'
+  });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -99,25 +112,92 @@ const UserAdmin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      if (editingUser) {
-        await api.put(`admin/users/${editingUser.id}/`, form);
-      } else {
-        await api.post('admin/users/create/', form);
+    
+    // Validate form for new user creation
+    if (!editingUser) {
+      if (!form.username || !form.email || !form.password) {
+        setNotification({
+          isVisible: true,
+          message: 'Please fill in all required fields (Username, Email, and Password)',
+          type: 'error'
+        });
+        return;
       }
+      
+      if (form.password.length < 6) {
+        setNotification({
+          isVisible: true,
+          message: 'Password must be at least 6 characters long',
+          type: 'error'
+        });
+        return;
+      }
+    }
+    
+    setIsSubmitting(true);
+    
+    // Show confirmation modal for updates
+    if (editingUser) {
+      setConfirmAction(() => async () => {
+        try {
+          console.log('Updating user with data:', form);
+          const response = await api.put(`admin/users/${editingUser.id}/`, form);
+          console.log('Update response:', response);
+          setNotification({
+            isVisible: true,
+            message: 'User updated successfully!',
+            type: 'success'
+          });
+          fetchUsers();
+          resetForm();
+        } catch (err) {
+          console.error('Error updating user:', err);
+          const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to update user';
+          setNotification({
+            isVisible: true,
+            message: `Error: ${errorMessage}`,
+            type: 'error'
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+        setShowConfirmModal(false);
+      });
+      setShowConfirmModal(true);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Create new user directly
+    try {
+      console.log('Creating new user with data:', form);
+      const response = await api.post('admin/users/create/', form);
+      console.log('Create response:', response);
+      setNotification({
+        isVisible: true,
+        message: 'User created successfully!',
+        type: 'success'
+      });
       fetchUsers();
       resetForm();
     } catch (err) {
-      console.error('Error saving user:', err);
-      alert('Failed to save user');
+      console.error('Error creating user:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to create user';
+      setNotification({
+        isVisible: true,
+        message: `Error: ${errorMessage}`,
+        type: 'error'
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEdit = (user) => {
     setEditingUser(user);
     setForm({
-      username: user.username,
-      email: user.email,
+      username: user.username || '',
+      email: user.email || '',
       password: '',
       role: user.is_staff || user.is_superuser ? 'admin' : 'customer'
     });
@@ -126,15 +206,27 @@ const UserAdmin = () => {
   };
 
   const handleDelete = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
-    
-    try {
-      await api.delete(`admin/users/${userId}/delete/`);
-      fetchUsers();
-    } catch (err) {
-      console.error('Error deleting user:', err);
-      alert('Failed to delete user');
-    }
+    setConfirmAction(() => async () => {
+      try {
+        await api.delete(`admin/users/${userId}/delete/`);
+        setNotification({
+          isVisible: true,
+          message: 'User deleted successfully!',
+          type: 'success'
+        });
+        fetchUsers();
+      } catch (err) {
+        console.error('Error deleting user:', err);
+        const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to delete user';
+        setNotification({
+          isVisible: true,
+          message: `Error: ${errorMessage}`,
+          type: 'error'
+        });
+      }
+      setShowConfirmModal(false);
+    });
+    setShowConfirmModal(true);
   };
 
   const resetForm = () => {
@@ -184,6 +276,7 @@ const UserAdmin = () => {
             {/* Add New User Button */}
             <button
               onClick={() => {
+                resetForm();
                 setShowForm(true);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
@@ -277,7 +370,10 @@ const UserAdmin = () => {
                 {editingUser ? 'Edit User' : 'Add New User'}
               </h3>
               <p className="text-slate-600">
-                {editingUser ? 'Update user information' : 'Create a new user account'}
+                {editingUser 
+                  ? `Update information for ${editingUser.username || editingUser.email}` 
+                  : 'Create a new user account with username, email, and role'
+                }
               </p>
             </div>
           </div>
@@ -285,18 +381,20 @@ const UserAdmin = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Username</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Username *</label>
                 <input
                   type="text"
                   name="username"
                   value={form.username}
                   onChange={handleChange}
                   required
+                  minLength="3"
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                  placeholder="Enter username"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
                 <input
                   type="email"
                   name="email"
@@ -304,27 +402,35 @@ const UserAdmin = () => {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                  placeholder="Enter email address"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Password {!editingUser && '*'}
+                </label>
                 <input
                   type="password"
                   name="password"
                   value={form.password}
                   onChange={handleChange}
                   required={!editingUser}
+                  minLength="6"
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                  placeholder={editingUser ? "Leave blank to keep current password" : "Enter password"}
                 />
+                {editingUser && (
+                  <p className="text-xs text-slate-500 mt-1">Leave blank to keep current password</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Role *</label>
                 <div className="bg-gradient-to-r from-slate-50 to-blue-50/50 p-6 rounded-2xl border border-slate-200/60">
-                  <div className="space-y-3">
-                    <label className="flex items-center space-x-3 cursor-pointer">
+                  <div className="space-y-4">
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-white/50 transition-all duration-200">
                       <input
                         type="radio"
                         name="role"
@@ -333,9 +439,12 @@ const UserAdmin = () => {
                         onChange={handleChange}
                         className="text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-slate-700 font-medium">Customer</span>
+                      <div>
+                        <span className="text-slate-700 font-medium">Customer</span>
+                        <p className="text-xs text-slate-500">Can book bikes and write reviews</p>
+                      </div>
                     </label>
-                    <label className="flex items-center space-x-3 cursor-pointer">
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-white/50 transition-all duration-200">
                       <input
                         type="radio"
                         name="role"
@@ -344,7 +453,10 @@ const UserAdmin = () => {
                         onChange={handleChange}
                         className="text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-slate-700 font-medium">Admin</span>
+                      <div>
+                        <span className="text-slate-700 font-medium">Admin</span>
+                        <p className="text-xs text-slate-500">Full system access and management</p>
+                      </div>
                     </label>
                   </div>
                 </div>
@@ -354,14 +466,31 @@ const UserAdmin = () => {
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                disabled={isSubmitting}
+                className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${
+                  isSubmitting 
+                    ? 'bg-slate-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white'
+                }`}
               >
-                {editingUser ? 'Update User' : 'Add User'}
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>{editingUser ? 'Updating...' : 'Creating...'}</span>
+                  </div>
+                ) : (
+                  <span>{editingUser ? 'Update User' : 'Create New User'}</span>
+                )}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-6 py-3 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+                disabled={isSubmitting}
+                className={`px-6 py-3 border border-slate-300 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg ${
+                  isSubmitting 
+                    ? 'text-slate-400 cursor-not-allowed' 
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
                 Cancel
               </button>
@@ -536,6 +665,30 @@ const UserAdmin = () => {
           <p className="text-gray-500 text-lg">No users found matching your filters.</p>
         </div>
       )}
+      
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={() => confirmAction && confirmAction()}
+        title={editingUser ? "Update User" : "Delete User"}
+        message={
+          editingUser 
+            ? "Are you sure you want to update this user's information? This will modify their account details."
+            : "Are you sure you want to delete this user? This action cannot be undone and will permanently remove their account."
+        }
+        confirmText={editingUser ? "Update User" : "Delete User"}
+        cancelText="Cancel"
+        type={editingUser ? "warning" : "danger"}
+      />
+      
+      {/* Success/Error Notification */}
+      <SuccessNotification
+        isVisible={notification.isVisible}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, isVisible: false }))}
+      />
     </div>
   );
 };

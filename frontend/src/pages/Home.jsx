@@ -46,8 +46,8 @@ const Home = () => {
     // Don't redirect while auth is loading
     if (authLoading) return;
 
-    // Only redirect admin users if they're not coming from admin panel
-    if (user && (user.is_staff || user.is_superuser) && !location.state?.fromAdmin) {
+    // Redirect admin users to admin dashboard
+    if (user && (user.is_staff || user.is_superuser)) {
       navigate('/admin/dashboard');
       return;
     }
@@ -68,9 +68,9 @@ const Home = () => {
   // Loading component
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-emerald-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -105,18 +105,15 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Admin Notice */}
-      {user && (user.is_staff || user.is_superuser) && (
-        <div className="bg-gradient-to-r from-blue-100 to-blue-200 border border-blue-300 rounded-xl max-w-4xl mx-auto mt-4 mb-6 p-4">
-          <p className="text-blue-800 text-center">
-            👨‍💼 <strong>Admin Mode:</strong> You're viewing the user interface. 
-            <Link to="/admin/dashboard" className="ml-2 text-blue-600 underline hover:text-blue-800 font-semibold">
-              Return to Admin Panel
-            </Link>
-          </p>
-        </div>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-delay-1"></div>
+        <div className="absolute top-40 left-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-delay-2"></div>
+      </div>
+
+
       
       {/* Professional Hero Section - Google Style */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen flex items-center">
@@ -207,7 +204,7 @@ const Home = () => {
       </div>
 
       {/* Professional Features Section */}
-      <div className="py-24 bg-white relative overflow-hidden">
+      <div className="py-24 bg-white/80 backdrop-blur-xl relative overflow-hidden">
         {/* Professional Background Pattern */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50/50 to-emerald-50/50"></div>
         
@@ -225,7 +222,7 @@ const Home = () => {
             {features.map((feature, index) => (
               <div 
                 key={index} 
-                className={`${feature.bgColor} rounded-2xl p-8 text-center hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-3 group border border-slate-200 bg-white`}
+                className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 text-center hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-3 group border border-slate-200 animate-scale-in"
                 style={{
                   animationDelay: `${index * 300}ms`
                 }}
@@ -239,7 +236,7 @@ const Home = () => {
                 <p className="text-slate-600 leading-relaxed group-hover:text-slate-700 transition-colors duration-300 font-light">{feature.description}</p>
                 
                 {/* Professional Hover Effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-blue-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-blue-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               </div>
             ))}
           </div>
@@ -247,7 +244,7 @@ const Home = () => {
       </div>
 
       {/* Available Bikes Section */}
-      <div className="py-24 bg-gradient-to-br from-gray-50 to-blue-50 relative overflow-hidden">
+      <div className="py-24 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-100/30 to-green-100/30"></div>
         
@@ -275,7 +272,7 @@ const Home = () => {
               <p className="text-gray-600 mb-6">{error}</p>
               <button
                 onClick={fetchData}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors duration-300"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
               >
                 Try Again
               </button>
@@ -283,7 +280,7 @@ const Home = () => {
           ) : bikes.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {bikes.map((bike) => (
-                <div key={bike.id} className="bg-white rounded-3xl shadow-xl overflow-hidden transform hover:scale-105 transition-all duration-500 group border border-gray-100">
+                <div key={bike.id} className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden transform hover:scale-105 transition-all duration-500 group border border-white/20">
                   {bike.image && (
                     <div className="relative h-56 overflow-hidden">
                       <img
@@ -340,7 +337,7 @@ const Home = () => {
       </div>
 
       {/* Customer Reviews Section */}
-      <div className="py-24 bg-white relative overflow-hidden">
+      <div className="py-24 bg-white/80 backdrop-blur-xl relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-gradient-to-br from-yellow-50/30 to-orange-50/30"></div>
         
@@ -366,7 +363,7 @@ const Home = () => {
               {reviews.map((review, index) => (
                 <div 
                   key={review.id} 
-                  className="bg-gradient-to-br from-gray-50 to-white p-8 rounded-3xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 group border border-gray-100"
+                  className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 group border border-white/20 animate-scale-in"
                   style={{
                     animationDelay: `${index * 200}ms`
                   }}

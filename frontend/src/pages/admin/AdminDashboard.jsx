@@ -48,45 +48,118 @@ const AdminDashboard = () => {
   const customers = allUsers.filter(user => !user.is_staff && !user.is_superuser);
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Analytics Dashboard</h1>
-      
-      {/* Current Admin Info */}
-      <div className="bg-blue-50 p-6 rounded-xl mb-8">
-        <h2 className="text-xl font-semibold text-blue-800 mb-4">👨‍💼 Current Admin</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <p className="text-gray-600">Username</p>
-            <p className="font-semibold">{user?.username || 'N/A'}</p>
+    <div className="space-y-10">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-200/60 rounded-3xl shadow-xl p-10">
+        <div className="flex items-center space-x-6 mb-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center border border-emerald-200/50 shadow-lg">
+            <span className="text-emerald-600 text-4xl">🚲</span>
           </div>
           <div>
-            <p className="text-gray-600">Email</p>
-            <p className="font-semibold">{user?.email || 'N/A'}</p>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
+              Analytics Dashboard
+            </h1>
+            <p className="text-xl text-slate-600 font-medium mb-2">Comprehensive insights and performance metrics</p>
+            <p className="text-lg text-slate-500 font-medium">
+              {new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
           </div>
-          <div>
-            <p className="text-gray-600">Role</p>
-            <p className="font-semibold text-blue-600">Administrator</p>
+        </div>
+        
+        {/* Current Admin Info */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/40 rounded-2xl p-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center border border-blue-200/50 shadow-lg">
+              <span className="text-blue-600 text-xl">👨‍💼</span>
+            </div>
+            <h2 className="text-2xl font-bold text-blue-800">Current Administrator</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white/60 rounded-xl p-4 border border-blue-200/30">
+              <p className="text-blue-600 text-sm font-semibold uppercase tracking-wide">Username</p>
+              <p className="text-lg font-bold text-slate-800">{user?.username || 'N/A'}</p>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 border border-blue-200/30">
+              <p className="text-blue-600 text-sm font-semibold uppercase tracking-wide">Email</p>
+              <p className="text-lg font-bold text-slate-800">{user?.email || 'N/A'}</p>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 border border-blue-200/30">
+              <p className="text-blue-600 text-sm font-semibold uppercase tracking-wide">Role</p>
+              <p className="text-lg font-bold text-blue-600">Administrator</p>
+            </div>
           </div>
         </div>
       </div>
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-md text-center">
-          <h2 className="text-lg font-semibold text-gray-600">Total Users</h2>
-          <p className="text-4xl text-blue-600 font-bold">{stats?.total_users || 0}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        {/* Total Users Card */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/40 text-slate-900 p-8 rounded-3xl shadow-lg transform hover:scale-105 transition-all duration-500 hover:shadow-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-sm font-semibold uppercase tracking-wide">Total Users</p>
+              <p className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{stats?.total_users || 0}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {stats?.customer_users || 0} customers, {stats?.admin_users || 0} admins
+              </p>
+            </div>
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center border border-blue-200/50 shadow-lg">
+              <span className="text-blue-600 text-3xl">👥</span>
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-md text-center">
-          <h2 className="text-lg font-semibold text-gray-600">Total Bikes</h2>
-          <p className="text-4xl text-green-600 font-bold">{stats?.total_bikes || 0}</p>
+        
+        {/* Total Bikes Card */}
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/40 text-slate-900 p-8 rounded-3xl shadow-lg transform hover:scale-105 transition-all duration-500 hover:shadow-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-sm font-semibold uppercase tracking-wide">Total Bikes</p>
+              <p className="text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{stats?.total_bikes || 0}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {stats?.available_bikes || 0} available
+              </p>
+            </div>
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center border border-emerald-200/50 shadow-lg">
+              <span className="text-emerald-600 text-3xl">🚲</span>
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-md text-center">
-          <h2 className="text-lg font-semibold text-gray-600">Total Bookings</h2>
-          <p className="text-4xl text-purple-600 font-bold">{stats?.total_bookings || 0}</p>
+        
+        {/* Total Bookings Card */}
+        <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200/40 text-slate-900 p-8 rounded-3xl shadow-lg transform hover:scale-105 transition-all duration-500 hover:shadow-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-sm font-semibold uppercase tracking-wide">Total Bookings</p>
+              <p className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">{stats?.total_bookings || 0}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {stats?.completed_bookings || 0} completed
+              </p>
+            </div>
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-violet-100 rounded-2xl flex items-center justify-center border border-purple-200/50 shadow-lg">
+              <span className="text-purple-600 text-3xl">📋</span>
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-md text-center">
-          <h2 className="text-lg font-semibold text-gray-600">Total Reviews</h2>
-          <p className="text-4xl text-orange-600 font-bold">{stats?.total_reviews || 0}</p>
+        
+        {/* Total Reviews Card */}
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/40 text-slate-900 p-8 rounded-3xl shadow-lg transform hover:scale-105 transition-all duration-500 hover:shadow-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-sm font-semibold uppercase tracking-wide">Total Reviews</p>
+              <p className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">{stats?.total_reviews || 0}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Avg. Rating: {stats?.avg_rating || 0}/5
+              </p>
+            </div>
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center border border-amber-200/50 shadow-lg">
+              <span className="text-amber-600 text-3xl">⭐</span>
+            </div>
+          </div>
         </div>
       </div>
 

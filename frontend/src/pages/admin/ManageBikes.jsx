@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import SuccessNotification from '../../components/SuccessNotification';
 
 const ManageBikes = () => {
   const [bikes, setBikes] = useState([]);
@@ -10,6 +12,7 @@ const ManageBikes = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingBike, setEditingBike] = useState(null);
   const [form, setForm] = useState({
+    name: '',
     brand: '',
     model: '',
     bike_type: '',
@@ -30,6 +33,17 @@ const ManageBikes = () => {
   // Mobile responsive states
   const [showFilters, setShowFilters] = useState(false);
   const [selectedBike, setSelectedBike] = useState(null);
+
+  // Confirmation modal and notification states
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [notification, setNotification] = useState({
+    isVisible: false,
+    message: '',
+    type: 'success'
+  });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchBikes();
@@ -102,35 +116,260 @@ const ManageBikes = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const formData = new FormData();
-      Object.keys(form).forEach(key => {
-        if (form[key] !== null) {
-          formData.append(key, form[key]);
-        }
-      });
-
-      if (editingBike) {
-        await api.put(`admin/bikes/${editingBike.id}/`, formData);
-      } else {
-        await api.post('admin/bikes/', formData);
+    
+    // Validate form for new bike creation
+    if (!editingBike) {
+      if (!form.name || !form.brand || !form.model || !form.bike_type || !form.price_per_hour || !form.image) {
+        setNotification({
+          isVisible: true,
+          message: 'Please fill in all required fields (Name, Brand, Model, Bike Type, Price, and Bike Image)',
+          type: 'error'
+        });
+        return;
       }
-      fetchBikes();
-      resetForm();
-    } catch (err) {
-      console.error('Error saving bike:', err);
-      alert('Failed to save bike');
+      
+      // Validate price is a positive number
+      if (isNaN(form.price_per_hour) || parseFloat(form.price_per_hour) <= 0) {
+        setNotification({
+          isVisible: true,
+          message: 'Please enter a valid price (must be a positive number)',
+          type: 'error'
+        });
+        return;
+      }
+      
+      // Validate image is required for new bikes
+      if (!form.image || !(form.image instanceof File)) {
+        setNotification({
+          isVisible: true,
+          message: 'Please select a bike image (required for new bikes)',
+          type: 'error'
+        });
+        return;
+      }
+      
+      // Validate image file
+      if (form.image.size > 5 * 1024 * 1024) {
+        setNotification({
+          isVisible: true,
+          message: 'Image file size must be less than 5MB',
+          type: 'error'
+        });
+        return;
+      }
+      if (!form.image.type.startsWith('image/')) {
+        setNotification({
+          isVisible: true,
+          message: 'Please select a valid image file (JPG, PNG, GIF)',
+          type: 'error'
+        });
+        return;
+      }
+    } else {
+      // Validate form for bike updates
+      if (!form.name || !form.brand || !form.model || !form.bike_type || !form.price_per_hour) {
+        setNotification({
+          isVisible: true,
+          message: 'Please fill in all required fields (Name, Brand, Model, Bike Type, and Price)',
+          type: 'error'
+        });
+        return;
+      }
+      
+      // Validate price is a positive number
+      if (isNaN(form.price_per_hour) || parseFloat(form.price_per_hour) <= 0) {
+        setNotification({
+          isVisible: true,
+          message: 'Please enter a valid price (must be a positive number)',
+          type: 'error'
+        });
+        return;
+      }
+      
+      // Validate image file if provided for updates
+      if (form.image && form.image instanceof File) {
+        if (form.image.size > 5 * 1024 * 1024) {
+          setNotification({
+            isVisible: true,
+            message: 'Image file size must be less than 5MB',
+            type: 'error'
+          });
+          return;
+        }
+        if (!form.image.type.startsWith('image/')) {
+          setNotification({
+            isVisible: true,
+            message: 'Please select a valid image file (JPG, PNG, GIF)',
+            type: 'error'
+          });
+          return;
+        }
+      }
     }
+    
+    setIsSubmitting(true);
+    
+    // Show confirmation modal for updates
+    if (editingBike) {
+      setConfirmAction(() => async () => {
+        try {
+          console.log('Updating bike with data:', form);
+          const formData = new FormData();
+          
+          // Add all form fields to FormData
+          Object.keys(form).forEach(key => {
+            if (form[key] !== null && form[key] !== '') {
+              if (key === 'image' && form[key] instanceof File) {
+                formData.append(key, form[key]);
+              } else if (key !== 'image') {
+                formData.append(key, form[key]);
+              }
+            }
+          });
+          
+          // Smart image handling: only include image if a new one is selected
+          if (form.image && form.image instanceof File) {
+            formData.append('image', form.image);
+          }
+          // If no new image, don't include image field - backend will keep old image
+          
+          const response = await api.put(`admin/bikes/${editingBike.id}/`, formData);
+          console.log('Update response:', response);
+          
+          setNotification({
+            isVisible: true,
+            message: 'Bike updated successfully!',
+            type: 'success'
+          });
+          fetchBikes();
+          resetForm();
+        } catch (err) {
+          console.error('Error updating bike:', err);
+          const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to update bike';
+          setNotification({
+            isVisible: true,
+            message: `Error: ${errorMessage}`,
+            type: 'error'
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+        setShowConfirmModal(false);
+      });
+      setShowConfirmModal(true);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Show confirmation modal for new bike creation
+    setConfirmAction(() => async () => {
+      try {
+        console.log('Creating new bike with data:', form);
+        const formData = new FormData();
+        
+        // Add all form fields to FormData
+        Object.keys(form).forEach(key => {
+          if (key === 'image') {
+            // Handle image field specifically
+            if (form[key] instanceof File) {
+              // Validate image file before sending
+              if (form[key].size > 5 * 1024 * 1024) { // 5MB limit
+                throw new Error('Image file size must be less than 5MB');
+              }
+              if (!form[key].type.startsWith('image/')) {
+                throw new Error('Please select a valid image file (JPG, PNG, etc.)');
+              }
+              formData.append(key, form[key]);
+            }
+          } else if (form[key] !== null && form[key] !== '') {
+            // Handle non-image fields
+            formData.append(key, form[key]);
+          }
+        });
+        
+        // Add default values for required fields that might be missing
+        if (!formData.has('status')) {
+          formData.append('status', 'available');
+        }
+        if (!formData.has('phone_number')) {
+          formData.append('phone_number', '');
+        }
+        
+        // Check if image is included
+        if (!formData.has('image')) {
+          console.error('No image found in FormData!');
+          throw new Error('Bike image is required. Please select an image file.');
+        }
+        
+        const response = await api.post('admin/bikes/', formData);
+        console.log('Create response:', response);
+        
+        setNotification({
+          isVisible: true,
+          message: 'Bike created successfully!',
+          type: 'success'
+        });
+        fetchBikes();
+        resetForm();
+      } catch (err) {
+        console.error('Error creating bike:', err);
+        console.error('Error response:', err.response?.data);
+        
+        let errorMessage = 'Failed to create bike';
+        
+        // Handle specific error types
+        if (err.message && err.message.includes('Image file size')) {
+          errorMessage = err.message;
+        } else if (err.message && err.message.includes('valid image file')) {
+          errorMessage = err.message;
+        } else if (err.response?.data?.image) {
+          // Handle array of image errors
+          if (Array.isArray(err.response.data.image)) {
+            errorMessage = err.response.data.image[0];
+          } else {
+            errorMessage = 'Please select a valid bike image (JPG, PNG, GIF). Image should be less than 5MB.';
+          }
+        } else if (err.response?.data?.name) {
+          errorMessage = 'Please provide a valid bike name.';
+        } else if (err.response?.data?.brand) {
+          errorMessage = 'Please provide a valid brand name.';
+        } else if (err.response?.data?.model) {
+          errorMessage = 'Please provide a valid model name.';
+        } else if (err.response?.data?.bike_type) {
+          errorMessage = 'Please select a valid bike type.';
+        } else if (err.response?.data?.price_per_hour) {
+          errorMessage = 'Please provide a valid price (must be a positive number).';
+        } else if (err.response?.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response?.data?.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response?.data?.detail) {
+          errorMessage = err.response.data.detail;
+        }
+        
+        setNotification({
+          isVisible: true,
+          message: errorMessage,
+          type: 'error'
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+      setShowConfirmModal(false);
+    });
+    setShowConfirmModal(true);
+    setIsSubmitting(false);
   };
 
   const handleEdit = (bike) => {
     setEditingBike(bike);
     setForm({
-      brand: bike.brand,
-      model: bike.model,
-      bike_type: bike.bike_type,
-      price_per_hour: bike.price_per_hour,
-      description: bike.description,
+      name: bike.name || '',
+      brand: bike.brand || '',
+      model: bike.model || '',
+      bike_type: bike.bike_type || '',
+      price_per_hour: bike.price_per_hour || '',
+      description: bike.description || '',
       image: null
     });
     setShowForm(true);
@@ -138,19 +377,32 @@ const ManageBikes = () => {
   };
 
   const handleDelete = async (bikeId) => {
-    if (!window.confirm('Are you sure you want to delete this bike?')) return;
-    
-    try {
-      await api.delete(`admin/bikes/${bikeId}/`);
-      fetchBikes();
-    } catch (err) {
-      console.error('Error deleting bike:', err);
-      alert('Failed to delete bike');
-    }
+    setConfirmAction(() => async () => {
+      try {
+        await api.delete(`admin/bikes/${bikeId}/`);
+        setNotification({
+          isVisible: true,
+          message: 'Bike deleted successfully!',
+          type: 'success'
+        });
+        fetchBikes();
+      } catch (err) {
+        console.error('Error deleting bike:', err);
+        const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to delete bike';
+        setNotification({
+          isVisible: true,
+          message: `Error: ${errorMessage}`,
+          type: 'error'
+        });
+      }
+      setShowConfirmModal(false);
+    });
+    setShowConfirmModal(true);
   };
 
   const resetForm = () => {
     setForm({
+      name: '',
       brand: '',
       model: '',
       bike_type: '',
@@ -329,24 +581,41 @@ const ManageBikes = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Brand</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter bike name"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Brand *</label>
                 <input
                   type="text"
                   name="brand"
                   value={form.brand}
                   onChange={handleChange}
                   required
+                  placeholder="Enter brand name"
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
                 />
               </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Model</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Model *</label>
                 <input
                   type="text"
                   name="model"
                   value={form.model}
                   onChange={handleChange}
                   required
+                  placeholder="Enter model name"
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
                 />
               </div>
@@ -354,7 +623,7 @@ const ManageBikes = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Bike Type</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Bike Type *</label>
                 <select
                   name="bike_type"
                   value={form.bike_type}
@@ -372,13 +641,15 @@ const ManageBikes = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Price per Hour (Rs.)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Price per Hour (Rs.) *</label>
                 <input
                   type="number"
                   name="price_per_hour"
                   value={form.price_per_hour}
                   onChange={handleChange}
                   required
+                  min="0"
+                  step="0.01"
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
                 />
               </div>
@@ -388,35 +659,75 @@ const ManageBikes = () => {
               <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
               <textarea
                 name="description"
-                value={form.description}
+                value={form.description || ''}
                 onChange={handleChange}
                 rows="3"
+                placeholder="Enter bike description (optional)"
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Bike Image</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Bike Image {editingBike ? '(Optional)' : '*'}
+              </label>
+              
+              {/* Show current image if editing */}
+              {editingBike && bikes.find(bike => bike.id === editingBike.id)?.image && (
+                <div className="mb-3">
+                  <p className="text-xs text-slate-600 mb-2">Current image:</p>
+                  <img
+                    src={bikes.find(bike => bike.id === editingBike.id)?.image}
+                    alt="Current bike image"
+                    className="w-32 h-24 object-cover rounded-lg border border-slate-200"
+                  />
+                </div>
+              )}
+              
               <input
                 type="file"
                 name="image"
                 onChange={handleChange}
                 accept="image/*"
+                required={!editingBike}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 bg-white/80 backdrop-blur-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
               />
+              <p className="text-xs text-slate-500 mt-1">
+                {editingBike 
+                  ? 'Leave empty to keep current image. JPG, PNG, GIF. Max size: 5MB'
+                  : 'Required: JPG, PNG, GIF. Max size: 5MB'
+                }
+              </p>
             </div>
 
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                disabled={isSubmitting}
+                className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${
+                  isSubmitting 
+                    ? 'bg-slate-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white'
+                }`}
               >
-                {editingBike ? 'Update Bike' : 'Add Bike'}
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>{editingBike ? 'Updating...' : 'Creating...'}</span>
+                  </div>
+                ) : (
+                  <span>{editingBike ? 'Update Bike' : 'Add Bike'}</span>
+                )}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-6 py-3 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+                disabled={isSubmitting}
+                className={`px-6 py-3 border border-slate-300 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg ${
+                  isSubmitting 
+                    ? 'text-slate-400 cursor-not-allowed' 
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
                 Cancel
               </button>
@@ -462,7 +773,7 @@ const ManageBikes = () => {
                 </div>
                 
                 <p className="text-slate-600 text-sm line-clamp-2">
-                  {bike.description}
+                  {bike.description || 'No description available'}
                 </p>
                 
                 <div className="text-2xl font-bold text-emerald-600">
@@ -492,6 +803,37 @@ const ManageBikes = () => {
           <p className="text-gray-500 text-lg">No bikes found matching your filters.</p>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={confirmAction}
+        title={
+          editingBike 
+            ? "Update Bike" 
+            : showForm && !editingBike 
+              ? "Add New Bike" 
+              : "Delete Bike"
+        }
+        message={
+          editingBike 
+            ? "Do you want to update this bike? Are you sure?"
+            : showForm && !editingBike 
+              ? "Are you sure you want to add this new bike to the inventory? Please review the details before confirming."
+              : "Are you sure you want to delete this bike? This action cannot be undone."
+        }
+        confirmText="Yes, Proceed"
+        cancelText="Cancel"
+      />
+
+      {/* Success/Error Notification */}
+      <SuccessNotification
+        isVisible={notification.isVisible}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification({ ...notification, isVisible: false })}
+      />
     </div>
   );
 };

@@ -8,7 +8,7 @@ from .views import (
     ReviewCreateView, ReviewListView, AdminReviewViewSet, AdminReviewDeleteView, CancelBookingView, StartRideView, EndRideView, UpdateProfileView,
     AdminUserListView, UserReviewDeleteView, AdminUserDetailView, AdminUserDeleteView, AdminUserRoleUpdateView,
     AdminBookingDeleteView, AdminDashboardStatsView, AdminUserCreateView, UserProfileView, UserDashboardStatsView,
-    bike_stats, AdminAnalyticsView, AnalyticsTrackView
+    bike_stats, AdminAnalyticsView, AnalyticsTrackView, TokenRefreshView, SystemStatusView
 )
 
 router = DefaultRouter()
@@ -21,6 +21,7 @@ urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('login/', UserLoginView.as_view(), name='login'),
     path('verify-email/<uidb64>/<token>/', VerifyEmailView.as_view(), name='verify-email'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
 
     # Password
     path('reset-password/', PasswordResetRequestView.as_view(), name='request-reset'),
@@ -66,6 +67,9 @@ urlpatterns = [
 
     # Admin Dashboard Stats
     path('admin/stats/', AdminDashboardStatsView.as_view(), name='admin-dashboard-stats'),
+    
+    # System Status
+    path('admin/system-status/', SystemStatusView.as_view(), name='system-status'),
 
     # Bike Stats
     path('bikes/stats/', bike_stats, name='bike-stats'),

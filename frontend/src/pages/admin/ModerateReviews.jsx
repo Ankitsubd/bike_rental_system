@@ -14,13 +14,17 @@ const ModerateReviews = () => {
     user: '',
     bike: '',
     dateFrom: '',
-    dateTo: '',
-    status: 'all' // all, approved, pending
+    dateTo: ''
   });
   
   // Mobile responsive states
   const [showFilters, setShowFilters] = useState(false);
   const [selectedReview, setSelectedReview] = useState(null);
+  
+  // Confirmation modal states
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchReviews();
@@ -52,6 +56,7 @@ const ModerateReviews = () => {
 
     if (filters.user) {
       filtered = filtered.filter(review => 
+        review.user_name?.toLowerCase().includes(filters.user.toLowerCase()) ||
         review.user?.username?.toLowerCase().includes(filters.user.toLowerCase()) ||
         review.user?.email?.toLowerCase().includes(filters.user.toLowerCase())
       );
@@ -59,6 +64,7 @@ const ModerateReviews = () => {
 
     if (filters.bike) {
       filtered = filtered.filter(review => 
+        review.bike_name?.toLowerCase().includes(filters.bike.toLowerCase()) ||
         review.bike?.name?.toLowerCase().includes(filters.bike.toLowerCase()) ||
         (review.bike?.brand + ' ' + review.bike?.model)?.toLowerCase().includes(filters.bike.toLowerCase())
       );
@@ -89,31 +95,26 @@ const ModerateReviews = () => {
       user: '',
       bike: '',
       dateFrom: '',
-      dateTo: '',
-      status: 'all'
+      dateTo: ''
     });
   };
 
-  const handleDeleteReview = async (reviewId) => {
-    if (!window.confirm('Are you sure you want to delete this review?')) return;
-    
-    try {
-      await api.delete(`admin/reviews/${reviewId}/delete/`);
-      fetchReviews(); // Refresh the list
-    } catch (err) {
-      console.error('Error deleting review:', err);
-      alert('Failed to delete review');
-    }
-  };
-
-  const handleApproveReview = async (reviewId) => {
-    try {
-      await api.patch(`admin/reviews/${reviewId}/approve/`);
-      fetchReviews(); // Refresh the list
-    } catch (err) {
-      console.error('Error approving review:', err);
-      alert('Failed to approve review');
-    }
+  const handleDeleteReview = (review) => {
+    setSelectedReview(review);
+    setConfirmAction(() => async () => {
+      setIsDeleting(true);
+      try {
+        await api.delete(`admin/reviews/${review.id}/delete/`);
+        setReviews(prev => prev.filter(r => r.id !== review.id));
+        setShowConfirmModal(false);
+      } catch (err) {
+        console.error('Error deleting review:', err);
+        alert('Failed to delete review');
+      } finally {
+        setIsDeleting(false);
+      }
+    });
+    setShowConfirmModal(true);
   };
 
   const renderStars = (rating) => {
@@ -134,9 +135,9 @@ const ModerateReviews = () => {
             </div>
             <div>
               <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                Review
+                Review Management
               </h1>
-              <p className="text-lg md:text-xl text-amber-600 font-medium">⭐ Moderate Reviews and manage feedback</p>
+              <p className="text-lg md:text-xl text-amber-600 font-medium">⭐ Manage and moderate user reviews</p>
             </div>
           </div>
           
@@ -239,20 +240,20 @@ const ModerateReviews = () => {
       {filteredReviews.length > 0 ? (
         <div className="space-y-4">
           {filteredReviews.map(review => (
-            <div key={review.id} className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+            <div key={review.id} className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 hover:shadow-xl transition-all duration-300">
               {/* Desktop Layout */}
               <div className="hidden md:block">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <div className="flex items-center space-x-4 mb-2">
                       <h3 className="font-semibold text-lg text-slate-800">
-                        {review.user?.username || review.user?.email || 'Anonymous'}
+                        {review.user_name || review.user?.username || review.user?.email || 'Anonymous'}
                       </h3>
                       <span className="text-yellow-500 text-lg">{renderStars(review.rating)}</span>
                       <span className="text-sm text-slate-500">({review.rating}/5)</span>
                     </div>
                     <p className="text-slate-600 mb-2">
-                      Review for: <span className="font-medium">{review.bike?.name || review.bike?.brand + ' ' + review.bike?.model || 'N/A'}</span>
+                      Review for: <span className="font-medium">{review.bike_name || review.bike?.name || review.bike?.brand + ' ' + review.bike?.model || 'N/A'}</span>
                     </p>
                     <p className="text-slate-700">{review.comment}</p>
                   </div>
@@ -260,20 +261,12 @@ const ModerateReviews = () => {
                     <div className="text-sm text-slate-500 mb-2">
                       {new Date(review.created_at).toLocaleDateString()}
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleApproveReview(review.id)}
-                        className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleDeleteReview(review.id)}
-                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleDeleteReview(review)}
+                      className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600 transition-all duration-300 transform hover:scale-105"
+                    >
+                      Delete Review
+                    </button>
                   </div>
                 </div>
               </div>
@@ -283,10 +276,10 @@ const ModerateReviews = () => {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-800">
-                      {review.user?.username || review.user?.email || 'Anonymous'}
+                      {review.user_name || review.user?.username || review.user?.email || 'Anonymous'}
                     </h3>
                     <p className="text-sm text-slate-600 mb-1">
-                      {review.bike?.name || review.bike?.brand + ' ' + review.bike?.model || 'N/A'}
+                      {review.bike_name || review.bike?.name || review.bike?.brand + ' ' + review.bike?.model || 'N/A'}
                     </p>
                     <div className="flex items-center space-x-2 mb-2">
                       <span className="text-yellow-500">{renderStars(review.rating)}</span>
@@ -300,20 +293,12 @@ const ModerateReviews = () => {
                 
                 <p className="text-slate-700 text-sm mb-4">{review.comment}</p>
                 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleApproveReview(review.id)}
-                    className="flex-1 bg-green-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-600"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleDeleteReview(review.id)}
-                    className="flex-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleDeleteReview(review)}
+                  className="w-full bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600 transition-all duration-300"
+                >
+                  Delete Review
+                </button>
               </div>
             </div>
           ))}
@@ -321,6 +306,64 @@ const ModerateReviews = () => {
       ) : (
         <div className="text-center py-8">
           <p className="text-gray-500 text-lg">No reviews found matching your filters.</p>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-red-600 text-2xl">⚠️</span>
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Delete Review</h3>
+              <p className="text-slate-600 mb-6">
+                Are you sure you want to delete this review? This action cannot be undone.
+              </p>
+              
+              {selectedReview && (
+                <div className="bg-slate-50 rounded-lg p-4 mb-6 text-left">
+                  <p className="text-sm text-slate-600 mb-2">
+                    <strong>User:</strong> {selectedReview.user_name || selectedReview.user?.username || selectedReview.user?.email || 'Anonymous'}
+                  </p>
+                  <p className="text-sm text-slate-600 mb-2">
+                    <strong>Bike:</strong> {selectedReview.bike_name || selectedReview.bike?.name || selectedReview.bike?.brand + ' ' + selectedReview.bike?.model || 'N/A'}
+                  </p>
+                  <p className="text-sm text-slate-600 mb-2">
+                    <strong>Rating:</strong> {selectedReview.rating}/5
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    <strong>Comment:</strong> {selectedReview.comment}
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-all duration-300 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmAction}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-300 disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Deleting...</span>
+                    </div>
+                  ) : (
+                    'Delete Review'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
