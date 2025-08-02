@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -29,7 +29,6 @@ const UserAdmin = () => {
   
   // Mobile responsive states
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
   
   // Modal and notification states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -42,28 +41,7 @@ const UserAdmin = () => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [users, filters]);
-
-  const fetchUsers = async () => {
-    try {
-      const res = await api.get('admin/users/');
-      setUsers(res.data.results || res.data || []);
-      setError('');
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      setError('Failed to load users.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...users];
 
     if (filters.role) {
@@ -94,6 +72,27 @@ const UserAdmin = () => {
     }
 
     setFilteredUsers(filtered);
+  }, [users, filters]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [users, filters, applyFilters]);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get('admin/users/');
+      setUsers(res.data.results || res.data || []);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError('Failed to load users.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFilterChange = (key, value) => {

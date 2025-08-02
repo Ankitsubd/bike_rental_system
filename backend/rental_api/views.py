@@ -1103,4 +1103,42 @@ class SystemStatusView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# Admin Contact Information API
+class AdminContactInfoView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request):
+        """Get admin contact information for public display"""
+        try:
+            # Get the first admin user (superuser or staff)
+            admin_user = User.objects.filter(
+                Q(is_superuser=True) | Q(is_staff=True)
+            ).first()
+            
+            if admin_user:
+                return Response({
+                    'email': admin_user.email,
+                    'phone_number': admin_user.phone_number or '+977 9841234567',
+                    'full_name': admin_user.full_name or admin_user.username,
+                    'location': 'Chitwan, Nepal'  # Default location
+                }, status=status.HTTP_200_OK)
+            else:
+                # Fallback to default contact info
+                return Response({
+                    'email': 'rentbike@gmail.com',
+                    'phone_number': '+977 9841234567',
+                    'full_name': 'Bike Rental Admin',
+                    'location': 'Chitwan, Nepal'
+                }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            print(f"Error fetching admin contact info: {e}")
+            return Response({
+                'email': 'rentbike@gmail.com',
+                'phone_number': '+977 9841234567',
+                'full_name': 'Bike Rental Admin',
+                'location': 'Chitwan, Nepal'
+            }, status=status.HTTP_200_OK)
+
+
 

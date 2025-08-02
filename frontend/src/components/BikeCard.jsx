@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
     FaCheckCircle, 
@@ -92,7 +92,7 @@ const BikeCard = ({ bike }) => {
         return colors[bikeType?.toLowerCase()] || 'from-slate-500 to-slate-600';
     };
 
-    const fetchReviews = async () => {
+    const fetchReviews = useCallback(async () => {
         if (!bike.id) return;
         
         try {
@@ -105,11 +105,11 @@ const BikeCard = ({ bike }) => {
         } finally {
             setLoadingReviews(false);
         }
-    };
+    }, [bike.id]);
 
     useEffect(() => {
         fetchReviews();
-    }, [bike.id]);
+    }, [fetchReviews]);
 
     const statusConfig = getStatusConfig(bike.status);
     const isAvailableForBooking = isAvailable;
@@ -233,6 +233,15 @@ const BikeCard = ({ bike }) => {
                         isHovered ? 'opacity-100' : 'opacity-0'
                     }`}></div>
                 </div>
+
+                {/* Bike Description - Right below image */}
+                {bike.description && (
+                    <div className="p-3 bg-blue-50 border-b border-blue-100">
+                        <p className="text-sm text-slate-700 leading-relaxed line-clamp-2">
+                            {bike.description}
+                        </p>
+                    </div>
+                )}
 
                 {/* Professional Content Section */}
                 <div className="p-4 sm:p-6 relative">

@@ -8,7 +8,7 @@ from .views import (
     ReviewCreateView, ReviewListView, AdminReviewViewSet, AdminReviewDeleteView, CancelBookingView, StartRideView, EndRideView, UpdateProfileView,
     AdminUserListView, UserReviewDeleteView, AdminUserDetailView, AdminUserDeleteView, AdminUserRoleUpdateView,
     AdminBookingDeleteView, AdminDashboardStatsView, AdminUserCreateView, UserProfileView, UserDashboardStatsView,
-    bike_stats, AdminAnalyticsView, AnalyticsTrackView, TokenRefreshView, SystemStatusView
+    bike_stats, AdminAnalyticsView, AnalyticsTrackView, TokenRefreshView, SystemStatusView, AdminContactInfoView
 )
 
 router = DefaultRouter()
@@ -73,6 +73,9 @@ urlpatterns = [
 
     # Bike Stats
     path('bikes/stats/', bike_stats, name='bike-stats'),
+    
+    # Admin Contact Info
+    path('admin/contact-info/', AdminContactInfoView.as_view(), name='admin-contact-info'),
     
     # DRF Router 
     path('', include(router.urls)),

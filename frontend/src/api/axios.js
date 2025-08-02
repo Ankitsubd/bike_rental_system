@@ -63,25 +63,32 @@ api.interceptors.request.use(async (req) => {
 
   if (accessToken && !isAuthEndpoint) {
     try {
-      const decoded = jwtDecode(accessToken);
-      const isExpired = dayjs.unix(decoded.exp).diff(dayjs()) < 1000;
+      // Check if token is valid before decoding
+      if (accessToken && accessToken.split('.').length === 3) {
+        const decoded = jwtDecode(accessToken);
+        const isExpired = dayjs.unix(decoded.exp).diff(dayjs()) < 1000;
 
-      if (isExpired) {
-        console.log('Token expired, refreshing...');
-        accessToken = await refreshToken();
-        if (accessToken) {
-          console.log('Token refreshed successfully');
-        } else {
-          console.log('Token refresh failed');
+        if (isExpired) {
+          console.log('Token expired, refreshing...');
+          accessToken = await refreshToken();
+          if (accessToken) {
+            console.log('Token refreshed successfully');
+          } else {
+            console.log('Token refresh failed');
+          }
         }
-      }
 
-      if (accessToken) {
-        req.headers.Authorization = `Bearer ${accessToken}`;
+        if (accessToken) {
+          req.headers.Authorization = `Bearer ${accessToken}`;
+        }
+      } else {
+        console.log('Invalid token format, skipping token refresh');
       }
     } catch (error) {
       console.error('Error checking token:', error);
-      // Don't clear tokens here, let the response interceptor handle it
+      // Clear invalid tokens
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
     }
   }
 

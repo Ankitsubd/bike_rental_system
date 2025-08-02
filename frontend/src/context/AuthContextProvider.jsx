@@ -1,18 +1,8 @@
-// src/context/AuthContext.jsx
-import React, { createContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { loginAPI } from '../api/auth';
 import { refreshToken } from '../utils/tokenRefresh';
-
-// Provide default values to prevent undefined errors
-const defaultContext = {
-  user: null,
-  login: async () => {},
-  logout: () => {},
-  loading: true
-};
-
-export const AuthContext = createContext(defaultContext);
+import { AuthContext } from './AuthContext';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -97,26 +87,16 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   const login = async ({ email, password }) => {
-    try {
-      const userData = await loginAPI({ email, password });
-      setUser(userData);
-      
-      // Store additional user info in localStorage
-      localStorage.setItem('is_staff', userData.is_staff);
-      localStorage.setItem('is_superuser', userData.is_superuser);
-      localStorage.setItem('is_customer', userData.is_customer);
-      localStorage.setItem('is_verified', userData.is_verified);
-      if (userData.full_name) localStorage.setItem('full_name', userData.full_name);
-      if (userData.phone_number) localStorage.setItem('phone_number', userData.phone_number);
-      
-      return userData;
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    }
+    const response = await loginAPI({ email, password });
+    
+    // The loginAPI already stores the data in localStorage and returns the user data
+    // We just need to set the user state
+    setUser(response);
+    return response;
   };
 
   const logout = () => {
+    // Clear all auth data
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('role');
@@ -128,20 +108,21 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('is_superuser');
     localStorage.removeItem('is_customer');
     localStorage.removeItem('is_verified');
+    
     setUser(null);
   };
 
   const updateUser = (userData) => {
-    setUser(userData);
+    setUser(prevUser => ({
+      ...prevUser,
+      ...userData
+    }));
+    
     // Update localStorage with new user data
     if (userData.email) localStorage.setItem('email', userData.email);
     if (userData.username) localStorage.setItem('username', userData.username);
     if (userData.full_name) localStorage.setItem('full_name', userData.full_name);
     if (userData.phone_number) localStorage.setItem('phone_number', userData.phone_number);
-    if (userData.is_staff !== undefined) localStorage.setItem('is_staff', userData.is_staff);
-    if (userData.is_superuser !== undefined) localStorage.setItem('is_superuser', userData.is_superuser);
-    if (userData.is_customer !== undefined) localStorage.setItem('is_customer', userData.is_customer);
-    if (userData.is_verified !== undefined) localStorage.setItem('is_verified', userData.is_verified);
   };
 
   return (
@@ -149,4 +130,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+}; 

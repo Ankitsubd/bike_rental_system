@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
 
@@ -26,28 +26,7 @@ const ModerateReviews = () => {
   const [confirmAction, setConfirmAction] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    fetchReviews();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [reviews, filters]);
-
-  const fetchReviews = async () => {
-    try {
-      const res = await api.get('admin/reviews/');
-      setReviews(res.data.results || res.data || []);
-      setError('');
-    } catch (err) {
-      console.error('Error fetching reviews:', err);
-      setError('Failed to load reviews.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...reviews];
 
     if (filters.rating) {
@@ -83,6 +62,27 @@ const ModerateReviews = () => {
     }
 
     setFilteredReviews(filtered);
+  }, [reviews, filters]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [reviews, filters, applyFilters]);
+
+  const fetchReviews = async () => {
+    try {
+      const res = await api.get('admin/reviews/');
+      setReviews(res.data.results || res.data || []);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+      setError('Failed to load reviews.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFilterChange = (key, value) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useAuth from '../../hooks/useAuth';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
@@ -6,7 +6,8 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const AdminProfile = () => {
   const { user, updateUser } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
@@ -36,6 +37,7 @@ const AdminProfile = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
 
+  // Initialize form with user data when user changes
   useEffect(() => {
     if (user) {
       setProfileForm({
@@ -46,6 +48,43 @@ const AdminProfile = () => {
       });
     }
   }, [user]);
+
+  // Fetch fresh profile data on component mount (only once)
+  const loadProfileData = useCallback(async () => {
+    try {
+      setProfileLoading(true);
+      const response = await api.get('user/profile/');
+      
+      // Update form with fresh data
+      setProfileForm({
+        username: response.data.username || '',
+        email: response.data.email || '',
+        full_name: response.data.full_name || '',
+        phone_number: response.data.phone_number || ''
+      });
+      
+      // Update user context without causing re-renders
+      updateUser(response.data);
+      setDataLoaded(true);
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+      // If authentication fails, don't show loading spinner indefinitely
+      setProfileLoading(false);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, [updateUser]);
+
+  useEffect(() => {
+    // Only load profile data if user is authenticated and we haven't loaded yet
+    if (user && !dataLoaded) {
+      loadProfileData();
+    } else if (!user) {
+      setProfileLoading(false);
+    }
+  }, [user, dataLoaded, loadProfileData]); // Add loadProfileData to dependencies
+
+
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
@@ -73,8 +112,24 @@ const AdminProfile = () => {
       console.log('Sending profile data:', profileForm);
       const response = await api.put('user/profile/', profileForm);
       console.log('Profile update response:', response.data);
+      
+      // Update the user context with new data
       updateUser(response.data);
+      
+      // Update the form with the response data to ensure consistency
+      setProfileForm({
+        username: response.data.username || '',
+        email: response.data.email || '',
+        full_name: response.data.full_name || '',
+        phone_number: response.data.phone_number || ''
+      });
+      
       setSuccess('Profile updated successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess('');
+      }, 3000);
     } catch (err) {
       console.error('Error updating profile:', err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to update profile';
@@ -129,12 +184,35 @@ const AdminProfile = () => {
     setShowConfirmModal(true);
   };
 
-  const clearMessages = () => {
-    setError('');
-    setSuccess('');
-  };
 
-  if (loading) return <Spinner />;
+
+  // Show loading spinner only when actually loading data
+  if (profileLoading && user) return <Spinner />;
+
+  // Show error if user is not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 px-8 py-6 text-white">
+              <h2 className="text-2xl font-bold">Authentication Required</h2>
+              <p className="text-red-100 text-sm mt-1">Please log in to access your profile</p>
+            </div>
+            <div className="p-8 text-center">
+              <p className="text-gray-600 mb-6">You need to be logged in to view your profile.</p>
+              <button
+                onClick={() => window.location.href = '/login'}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
+              >
+                Go to Login
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -179,8 +257,14 @@ const AdminProfile = () => {
               </div>
             </div>
 
-            <form onSubmit={handleProfileSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-slate-600">Loading profile data...</span>
+              </div>
+            ) : (
+              <form onSubmit={handleProfileSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Username</label>
                   <input
@@ -245,6 +329,7 @@ const AdminProfile = () => {
                 )}
               </button>
             </form>
+            )}
           </div>
 
           {/* Password Change */}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -32,7 +32,6 @@ const ManageBikes = () => {
   
   // Mobile responsive states
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedBike, setSelectedBike] = useState(null);
 
   // Confirmation modal and notification states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -45,28 +44,7 @@ const ManageBikes = () => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchBikes();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [bikes, filters]);
-
-  const fetchBikes = async () => {
-    try {
-      const res = await api.get('admin/bikes/');
-      setBikes(res.data.results || res.data || []);
-      setError('');
-    } catch (err) {
-      console.error('Error fetching bikes:', err);
-      setError('Failed to load bikes.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...bikes];
 
     if (filters.bike_type) {
@@ -98,6 +76,27 @@ const ManageBikes = () => {
     }
 
     setFilteredBikes(filtered);
+  }, [bikes, filters]);
+
+  useEffect(() => {
+    fetchBikes();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [bikes, filters, applyFilters]);
+
+  const fetchBikes = async () => {
+    try {
+      const res = await api.get('admin/bikes/');
+      setBikes(res.data.results || res.data || []);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching bikes:', err);
+      setError('Failed to load bikes.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFilterChange = (key, value) => {

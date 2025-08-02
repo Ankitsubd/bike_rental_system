@@ -18,17 +18,23 @@ export default function UserDashboard() {
   });
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
         // Fetch user profile
         const profileResponse = await api.get('user/profile/');
-        setProfile(profileResponse.data);
+        if (isMounted) {
+          setProfile(profileResponse.data);
+        }
         
         // Fetch user bookings
         const bookingsResponse = await api.get('user/bookings/');
-        setBookings(bookingsResponse.data);
+        if (isMounted) {
+          setBookings(bookingsResponse.data);
+        }
         
         // Calculate stats
         const totalBookings = bookingsResponse.data.length;
@@ -45,21 +51,31 @@ export default function UserDashboard() {
           return sum + (hours * (booking.bike_price || 0));
         }, 0);
         
-        setStats({
-          totalBookings,
-          activeBookings,
-          completedBookings,
-          totalSpent: Math.round(totalSpent)
-        });
+        if (isMounted) {
+          setStats({
+            totalBookings,
+            activeBookings,
+            completedBookings,
+            totalSpent: Math.round(totalSpent)
+          });
+        }
         
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        if (isMounted) {
+          console.error('Error fetching dashboard data:', error);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleProfileUpdate = async (e) => {

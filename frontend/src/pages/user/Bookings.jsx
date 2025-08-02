@@ -3,10 +3,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaCalendarAlt, FaClock, FaDollarSign, FaMapMarkerAlt, FaStar, FaCheckCircle, FaTimes, FaPlay, FaStop, FaBan, FaEdit, FaBicycle, FaHistory, FaShieldAlt } from 'react-icons/fa';
 import api from '../../api/axios';
 import { cancelBooking, startRide, endRide } from '../../api/bookings';
+import useBike from '../../hooks/useBike';
 import Spinner from '../../components/Spinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
 
 const Bookings = () => {
+  const { updateBikeStatus } = useBike();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,7 +53,7 @@ const Bookings = () => {
       setBookings(response.data);
       setError('');
     } catch (error) {
-      setError('Failed to load your current bookings.');
+      setError('Failed to load your current bookings. Please try again later.');
       console.error('Error fetching current bookings:', error);
     } finally {
       setLoading(false);
@@ -78,10 +80,26 @@ const Bookings = () => {
       
       if (action === 'cancel') {
         await cancelBooking(bookingId);
+        // Update bike status to available when booking is cancelled
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking?.bike) {
+          updateBikeStatus(booking.bike, 'available');
+        }
       } else if (action === 'start') {
         await startRide(bookingId);
+        // Update bike status to in_use when ride starts
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking?.bike) {
+          updateBikeStatus(booking.bike, 'in_use');
+        }
       } else if (action === 'end') {
         const response = await endRide(bookingId);
+        
+        // Update bike status to available when ride ends
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking?.bike) {
+          updateBikeStatus(booking.bike, 'available');
+        }
         
         // Show cost breakdown modal
         setCostBreakdownModal({
@@ -94,13 +112,19 @@ const Bookings = () => {
       fetchBookings(); // Refresh the list
     } catch (error) {
       console.error(`Error ${action}ing booking:`, error);
-      if (action === 'start') {
-        alert('Failed to start ride. Please try again.');
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (action === 'start') {
+        errorMessage = 'Failed to start ride. Please try again.';
       } else if (action === 'end') {
-        alert('Failed to end ride. Please try again.');
-      } else {
-        alert('Failed to cancel booking. Please try again.');
+        errorMessage = 'Failed to end ride. Please try again.';
+      } else if (action === 'cancel') {
+        errorMessage = 'Failed to cancel booking. Please try again.';
       }
+      
+      setError(errorMessage);
     } finally {
       setActionLoading(prev => ({ ...prev, [bookingId]: false }));
       setConfirmationModal({ isOpen: false, action: null, bookingId: null, title: '', message: '', confirmText: '', confirmColor: '' });

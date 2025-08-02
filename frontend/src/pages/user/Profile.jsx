@@ -78,7 +78,7 @@ const Profile = () => {
       newErrors.phone_number = 'Phone number is required';
     } else {
       // Basic phone number validation
-      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      const phoneRegex = /^[\d\s\-+()]+$/;
       if (!phoneRegex.test(profile.phone_number)) {
         newErrors.phone_number = 'Please enter a valid phone number';
       }

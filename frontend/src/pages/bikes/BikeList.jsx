@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
+import { useSearchParams } from 'react-router-dom';
+import useBike from '../../hooks/useBike';
 import api from '../../api/axios';
 import BikeCard from '../../components/BikeCard';
 import Spinner from '../../components/Spinner';
+import apiCache, { CACHE_KEYS } from '../../utils/cache';
 import { 
   FaSearch, 
   FaFilter, 
@@ -30,20 +31,14 @@ const SearchInput = ({ initialValue, onSearch, placeholder = "Search bikes..." }
     if (initialValue !== inputValue) {
       setInputValue(initialValue || '');
     }
-  }, [initialValue]);
+  }, [initialValue, inputValue]);
 
-  const debouncedSearch = useCallback(
-    (() => {
-      let timeoutId;
-      return (value) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          onSearch(value);
-        }, 500);
-      };
-    })(),
-    [onSearch]
-  );
+  const debouncedSearch = useCallback((value) => {
+    const timeoutId = setTimeout(() => {
+      onSearch(value);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [onSearch]);
 
   const handleChange = (e) => {
     const value = e.target.value;
@@ -268,8 +263,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 };
 
 const BikeList = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
+  const { bikes: contextBikes, fetchBikes, loading: contextLoading } = useBike();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bikes, setBikes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -306,10 +300,94 @@ const BikeList = () => {
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo(0, 0);
-  }, []);
+    
+    // Refresh bikes when component mounts to get latest status
+    if (!searchTerm && !typeFilter && !statusFilter && !sortBy && currentPage === 1) {
+      fetchBikes();
+    }
+    
+    // Refresh when user returns to the tab
+    const handleFocus = () => {
+      if (!searchTerm && !typeFilter && !statusFilter && !sortBy && currentPage === 1) {
+        fetchBikes();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchBikes, searchTerm, typeFilter, statusFilter, sortBy, currentPage]);
+
+  // Use context bikes for real-time updates when no filters are applied
+  useEffect(() => {
+    if (!searchTerm && !typeFilter && !statusFilter && !sortBy && currentPage === 1) {
+      // Use context bikes for real-time updates
+      setBikes(contextBikes);
+      setLoading(contextLoading);
+      setTotalPages(Math.ceil((contextBikes.length) / 12));
+    }
+  }, [contextBikes, contextLoading, searchTerm, typeFilter, statusFilter, sortBy, currentPage]);
 
   useEffect(() => {
-    fetchData();
+    let isMounted = true;
+    
+    const fetchDataSafely = async () => {
+      try {
+        setLoading(true);
+        
+        // Create cache key based on filters
+        const cacheKey = `${CACHE_KEYS.BIKES}_${searchTerm}_${typeFilter}_${statusFilter}_${sortBy}_${currentPage}`;
+        
+        // Check cache first
+        const cachedData = apiCache.get(cacheKey);
+        if (cachedData && !searchTerm && !typeFilter && !statusFilter) {
+          if (isMounted) {
+            setBikes(cachedData.results || cachedData);
+            setTotalPages(Math.ceil((cachedData.count || cachedData.length) / 12));
+            setError('');
+            setLoading(false);
+          }
+          return;
+        }
+        
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('search', searchTerm);
+        if (typeFilter) params.append('bike_type', typeFilter);
+        if (statusFilter) params.append('status', statusFilter);
+        if (sortBy) params.append('ordering', sortBy);
+        params.append('page', currentPage);
+
+        const response = await api.get(`bikes/?${params.toString()}`);
+        
+        if (isMounted) {
+          setBikes(response.data.results || response.data);
+          setTotalPages(Math.ceil((response.data.count || response.data.length) / 12));
+          setError('');
+          
+          // Cache the response if no filters applied
+          if (!searchTerm && !typeFilter && !statusFilter) {
+            apiCache.set(cacheKey, response.data);
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
+          setError('Failed to load bikes. Please try again later.');
+          console.error('Error fetching bikes:', error);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchDataSafely();
+
+    return () => {
+      isMounted = false;
+    };
   }, [currentPage, searchTerm, typeFilter, statusFilter, sortBy]);
 
   useEffect(() => {

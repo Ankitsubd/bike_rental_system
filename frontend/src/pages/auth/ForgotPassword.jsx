@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { requestPasswordReset } from '../../api/auth';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { FaArrowLeft, FaEnvelope, FaCheckCircle, FaShieldAlt } from 'react-icons/fa';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();

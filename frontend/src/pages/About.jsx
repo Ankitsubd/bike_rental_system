@@ -6,6 +6,12 @@ import api from '../api/axios';
 const About = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [adminContact, setAdminContact] = useState({
+    email: 'rentbike@gmail.com',
+    phone_number: '+977-56-123456',
+    full_name: 'Bike Rental Admin',
+    location: 'Chitwan, Nepal'
+  });
 
   useEffect(() => {
     // Track page visit
@@ -23,6 +29,18 @@ const About = () => {
     };
 
     trackPageVisit();
+
+    // Fetch admin contact info
+    const fetchAdminContact = async () => {
+      try {
+        const response = await api.get('admin/contact-info/');
+        setAdminContact(response.data);
+      } catch (error) {
+        console.error('Error fetching admin contact info:', error);
+      }
+    };
+
+    fetchAdminContact();
   }, []);
 
   const handleBrowseBikes = async () => {
@@ -318,14 +336,14 @@ const About = () => {
                 <FaPhone className="text-white text-2xl" />
               </div>
               <h3 className="text-xl font-semibold text-gray-800 mb-2">Phone</h3>
-              <p className="text-gray-600">+977-56-123456</p>
+              <p className="text-gray-600">{adminContact.phone_number}</p>
             </div>
             <div className="text-center p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-100 hover:shadow-lg transition-all duration-300 transform hover:scale-105">
               <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <FaEnvelope className="text-white text-2xl" />
               </div>
               <h3 className="text-xl font-semibold text-gray-800 mb-2">Email</h3>
-              <p className="text-gray-600">rentbike@gmail.com</p>
+              <p className="text-gray-600">{adminContact.email}</p>
             </div>
           </div>
         </div>

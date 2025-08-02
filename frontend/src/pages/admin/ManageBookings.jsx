@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
 import { FaEye, FaEdit, FaTrash, FaFilter, FaDownload, FaSearch, FaCalendar, FaUser, FaBicycle, FaMoneyBillWave } from 'react-icons/fa';
@@ -29,29 +29,7 @@ const ManageBookings = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [bookings, filters]);
-
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('admin/bookings/');
-      setBookings(res.data.results || res.data || []);
-      setError('');
-    } catch (err) {
-      console.error('Error fetching bookings:', err);
-      setError('Failed to load bookings. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...bookings];
 
     if (filters.status) {
@@ -97,6 +75,28 @@ const ManageBookings = () => {
     }
 
     setFilteredBookings(filtered);
+  }, [bookings, filters]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [bookings, filters, applyFilters]);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('admin/bookings/');
+      setBookings(res.data.results || res.data || []);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setError('Failed to load bookings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFilterChange = (key, value) => {

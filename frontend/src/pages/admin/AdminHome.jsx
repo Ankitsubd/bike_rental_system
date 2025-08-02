@@ -18,36 +18,54 @@ const AdminHome = () => {
   const { user } = useAuth();
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchData = async () => {
       try {
         setLoading(true);
         
         // Fetch stats
         const statsRes = await api.get('admin/stats/');
-        setStats(statsRes.data);
+        if (isMounted) {
+          setStats(statsRes.data);
+        }
         
         // Fetch all users
         const usersRes = await api.get('admin/users/');
-        setAllUsers(usersRes.data || []);
+        if (isMounted) {
+          setAllUsers(usersRes.data || []);
+        }
         
         // Fetch system status
         try {
           const statusRes = await api.get('admin/system-status/');
-          setSystemStatus(statusRes.data);
+          if (isMounted) {
+            setSystemStatus(statusRes.data);
+          }
         } catch (statusErr) {
-          console.error('Error fetching system status:', statusErr);
-          // Keep default status if fetch fails
+          if (isMounted) {
+            console.error('Error fetching system status:', statusErr);
+            // Keep default status if fetch fails
+          }
         }
         
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data.');
+        if (isMounted) {
+          console.error('Error fetching data:', err);
+          setError('Failed to load data.');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) return <Spinner />;
@@ -55,7 +73,6 @@ const AdminHome = () => {
 
   // Separate users by role
   const admins = allUsers.filter(user => user.is_staff || user.is_superuser);
-  const customers = allUsers.filter(user => !user.is_staff && !user.is_superuser);
 
   return (
     <div className="space-y-10">
