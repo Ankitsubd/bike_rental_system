@@ -18,13 +18,26 @@ const AddReview = () => {
 
   // Get bike data from location state or URL params
   useEffect(() => {
+    console.log('AddReview location.state:', location.state);
+    
     if (location.state?.bike) {
       setBike(location.state.bike);
     } else if (location.state?.booking) {
       // If we have booking data, fetch the bike details
       const fetchBikeDetails = async () => {
         try {
-          const response = await api.get(`bikes/${location.state.booking.bike_id || location.state.booking.bike}/`);
+          console.log('Booking object:', location.state.booking);
+          const bikeId = location.state.booking.bike_id || location.state.booking.bike;
+          console.log('Bike ID to fetch:', bikeId);
+          
+          if (!bikeId) {
+            console.error('No bike ID found in booking data');
+            setError('No bike ID found in booking data');
+            return;
+          }
+          
+          const response = await api.get(`bikes/${bikeId}/`);
+          console.log('Bike details fetched:', response.data);
           setBike(response.data);
         } catch (error) {
           console.error('Error fetching bike details:', error);
@@ -32,6 +45,9 @@ const AddReview = () => {
         }
       };
       fetchBikeDetails();
+    } else {
+      console.log('No bike or booking data found in location.state');
+      setError('No bike selected for review');
     }
   }, [location.state]);
 
@@ -117,8 +133,25 @@ const AddReview = () => {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading bike details...</p>
+            {error ? (
+              <div>
+                <div className="text-6xl mb-4">⚠️</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">Error Loading Bike Details</h2>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <button
+                  onClick={() => window.history.back()}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Go Back
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading bike details...</p>
+                <p className="text-sm text-gray-500 mt-2">Please wait while we fetch the bike information</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

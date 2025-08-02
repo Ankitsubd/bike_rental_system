@@ -136,6 +136,7 @@ const Bookings = () => {
   };
 
   const handleWriteReview = (booking) => {
+    console.log('Writing review for booking:', booking);
     navigate('/user/review', { state: { booking } });
   };
 
@@ -302,18 +303,18 @@ const Bookings = () => {
                     <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4 border border-green-100">
                       <div className="flex items-center gap-3 mb-2">
                         <FaClock className="text-green-600" />
-                        <p className="text-sm text-gray-600">End Time</p>
+                        <p className="text-sm text-gray-600">Booked End Time</p>
                       </div>
-                      <p className="font-bold text-gray-800">{formatDate(booking.end_time)}</p>
+                      <p className="font-bold text-gray-800">{formatDate(booking.booked_end_time)}</p>
                     </div>
                     
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 border border-purple-100">
                       <div className="flex items-center gap-3 mb-2">
                         <FaClock className="text-purple-600" />
-                        <p className="text-sm text-gray-600">Duration</p>
+                        <p className="text-sm text-gray-600">Booked Duration</p>
                       </div>
                       <p className="font-bold text-gray-800">
-                        {calculateDuration(booking.start_time, booking.end_time)} hours
+                        {calculateDuration(booking.start_time, booking.booked_end_time)} hours
                       </p>
                     </div>
                     
@@ -438,14 +439,14 @@ const Bookings = () => {
 
         {/* Cost Breakdown Modal */}
         {costBreakdownModal.isOpen && costBreakdownModal.data && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-8 animate-scale-in">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full mx-4 p-4 sm:p-8 animate-scale-in max-h-[90vh] overflow-y-auto">
               <div className="text-center mb-6">
                 <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <span className="text-green-600 text-3xl">✅</span>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">Ride Completed Successfully!</h3>
-                <p className="text-gray-600">Here's your cost breakdown</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Ride Completed Successfully!</h3>
+                <p className="text-sm sm:text-base text-gray-600">Here's your cost breakdown</p>
               </div>
 
               <div className="space-y-6">
@@ -456,36 +457,33 @@ const Bookings = () => {
                     Cost Breakdown
                   </h4>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center p-3 bg-white rounded-xl">
-                        <span className="text-gray-600">Original Booking:</span>
-                        <span className="font-semibold">{costBreakdownModal.data.cost_breakdown.original_booking_hours} hours</span>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white rounded-xl gap-2">
+                        <span className="text-sm sm:text-base text-gray-600">Booked Duration:</span>
+                        <span className="font-semibold text-sm sm:text-base">{costBreakdownModal.data.cost_breakdown.booked_duration_hours} hours</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white rounded-xl">
-                        <span className="text-gray-600">Actual Ride Time:</span>
-                        <span className="font-semibold text-green-600">{costBreakdownModal.data.cost_breakdown.actual_ride_hours} hours</span>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white rounded-xl gap-2">
+                        <span className="text-sm sm:text-base text-gray-600">Actual Ride Time:</span>
+                        <span className="font-semibold text-green-600 text-sm sm:text-base">{costBreakdownModal.data.cost_breakdown.actual_duration_hours} hours</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white rounded-xl">
-                        <span className="text-gray-600">Price per Hour:</span>
-                        <span className="font-semibold">Rs. {costBreakdownModal.data.cost_breakdown.price_per_hour}</span>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white rounded-xl gap-2">
+                        <span className="text-sm sm:text-base text-gray-600">Price per Hour:</span>
+                        <span className="font-semibold text-sm sm:text-base">Rs. {costBreakdownModal.data.cost_breakdown.price_per_hour}</span>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center p-3 bg-white rounded-xl">
-                        <span className="text-gray-600">Original Cost:</span>
-                        <span className="font-semibold">Rs. {costBreakdownModal.data.cost_breakdown.original_cost}</span>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white rounded-xl gap-2">
+                        <span className="text-sm sm:text-base text-gray-600">Final Duration:</span>
+                        <span className="font-semibold text-blue-600 text-sm sm:text-base">{costBreakdownModal.data.cost_breakdown.final_duration_hours} hours</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white rounded-xl">
-                        <span className="text-gray-600">Actual Cost:</span>
-                        <span className="font-semibold text-green-600">Rs. {costBreakdownModal.data.cost_breakdown.actual_cost}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-white rounded-xl">
-                        <span className="text-gray-600">Difference:</span>
-                        <span className={`font-semibold ${costBreakdownModal.data.cost_breakdown.difference >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          {costBreakdownModal.data.cost_breakdown.difference >= 0 ? '+' : ''}Rs. {costBreakdownModal.data.cost_breakdown.difference}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white rounded-xl gap-2">
+                        <span className="text-sm sm:text-base text-gray-600">Pricing Rule:</span>
+                        <span className="font-semibold text-purple-600 text-sm sm:text-base">
+                          {costBreakdownModal.data.cost_breakdown.pricing_rule === 'booked_duration' ? 'Booked Duration' : 'Actual Duration'}
                         </span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white rounded-xl gap-2">
+                        <span className="text-sm sm:text-base text-gray-600">Final Cost:</span>
+                        <span className="font-semibold text-green-600 text-sm sm:text-base">Rs. {costBreakdownModal.data.cost_breakdown.final_cost}</span>
                       </div>
                     </div>
                   </div>
@@ -498,36 +496,45 @@ const Bookings = () => {
                     Final Amount
                   </h4>
                   <div className="text-center">
-                    <p className="text-4xl font-bold text-green-600 mb-2">
-                      Rs. {costBreakdownModal.data.cost_breakdown.actual_cost}
+                    <p className="text-2xl sm:text-4xl font-bold text-green-600 mb-2">
+                      Rs. {costBreakdownModal.data.cost_breakdown.final_cost}
                     </p>
-                    <p className="text-gray-600">
-                      {costBreakdownModal.data.cost_breakdown.difference >= 0 
-                        ? `Additional charge: Rs. ${costBreakdownModal.data.cost_breakdown.difference}`
-                        : `You saved: Rs. ${Math.abs(costBreakdownModal.data.cost_breakdown.difference)}`
+                    <p className="text-sm sm:text-base text-gray-600">
+                      {costBreakdownModal.data.cost_breakdown.pricing_rule === 'booked_duration' 
+                        ? 'Charged based on your booked duration'
+                        : 'Charged based on your actual ride time'
                       }
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-8">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8">
                 <button
                   onClick={() => {
                     setCostBreakdownModal({ isOpen: false, data: null });
                     fetchBookings();
                   }}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 sm:px-6 py-3 rounded-2xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm sm:text-base"
                 >
                   View Updated Bookings
                 </button>
                 <button
                   onClick={() => {
+                    console.log('Cost breakdown modal data:', costBreakdownModal.data);
+                    const bookingData = {
+                      id: costBreakdownModal.data.booking_id,
+                      bike_id: costBreakdownModal.data.bike_id,
+                      bike_name: costBreakdownModal.data.bike_name
+                    };
+                    console.log('Passing booking data to review:', bookingData);
+                    
                     setCostBreakdownModal({ isOpen: false, data: null });
                     navigate('/user/review', { 
                       state: { 
                         fromEndRide: true,
-                        redirectTo: '/bikes'
+                        redirectTo: '/bikes',
+                        booking: bookingData
                       } 
                     });
                   }}

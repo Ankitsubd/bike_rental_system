@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getUserProfile, updateUserProfile } from '../../api/auth';
+import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
 import { FaUser, FaEnvelope, FaEdit, FaSave, FaTimes, FaBicycle, FaHistory, FaCog, FaPhone, FaShieldAlt, FaCalendarAlt, FaStar } from 'react-icons/fa';
 
@@ -11,6 +12,7 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState({});
+  const [stats, setStats] = useState({ total_bookings: 0 });
 
   // Memoized load profile function
   const loadProfile = useCallback(async () => {
@@ -18,8 +20,19 @@ const Profile = () => {
       setLoading(true);
       setMessage('');
       setErrors({});
+      
+      // Fetch profile data
       const data = await getUserProfile();
       setProfile(data);
+      
+      // Fetch user stats
+      try {
+        const statsResponse = await api.get('user/dashboard-stats/');
+        setStats(statsResponse.data);
+      } catch (statsError) {
+        console.error('Error loading stats:', statsError);
+        // Don't show error for stats, just keep default value
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
       setMessage('Failed to load profile information. Please try again.');
@@ -429,7 +442,7 @@ const Profile = () => {
                     <FaBicycle className="text-green-600" />
                     <span className="text-gray-600">Total Rentals</span>
                   </div>
-                  <span className="font-semibold text-gray-800">0</span>
+                  <span className="font-semibold text-gray-800">{stats.total_bookings}</span>
                 </div>
                 <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
                   <div className="flex items-center gap-3">

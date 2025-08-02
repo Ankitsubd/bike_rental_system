@@ -98,7 +98,8 @@ const BikeCard = ({ bike }) => {
         try {
             setLoadingReviews(true);
             const response = await api.get(`reviews/?bike=${bike.id}`);
-            setReviews(response.data.results || response.data);
+            console.log('Reviews API response:', response.data);
+            setReviews(response.data);
         } catch (error) {
             console.error('Error fetching reviews:', error);
         } finally {
@@ -154,7 +155,7 @@ const BikeCard = ({ bike }) => {
                             <img 
                                 src={bike.image}
                                 alt={bike.name}
-                                className={`w-full h-64 object-cover transition-all duration-700 ${
+                                className={`w-full h-48 sm:h-56 lg:h-64 object-cover transition-all duration-700 ${
                                     isHovered ? 'scale-110' : 'scale-100'
                                 } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                                 onLoad={handleImageLoad}
@@ -167,7 +168,7 @@ const BikeCard = ({ bike }) => {
                             )}
                         </div>
                     ) : (
-                        <div className="w-full h-64 bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 flex items-center justify-center relative overflow-hidden">
+                        <div className="w-full h-48 sm:h-56 lg:h-64 bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 flex items-center justify-center relative overflow-hidden">
                             <div className={`absolute inset-0 bg-gradient-to-r from-slate-400/20 to-slate-600/20 transition-opacity duration-500 ${
                                 isHovered ? 'opacity-100' : 'opacity-0'
                             }`}></div>
@@ -234,7 +235,7 @@ const BikeCard = ({ bike }) => {
                 </div>
 
                 {/* Professional Content Section */}
-                <div className="p-6 relative">
+                <div className="p-4 sm:p-6 relative">
                     {/* Professional Bike Info */}
                     <div className="mb-4">
                         <h3 className={`text-lg font-bold mb-2 line-clamp-1 transition-all duration-300 ${

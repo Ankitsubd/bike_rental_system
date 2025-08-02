@@ -118,19 +118,19 @@ const ManageBookings = () => {
   const handleStatusUpdate = async (bookingId, newStatus) => {
     setConfirmAction(() => async () => {
       setIsUpdating(true);
-      try {
-        await api.patch(`admin/bookings/${bookingId}/update/`, {
-          status: newStatus
-        });
+    try {
+      await api.patch(`admin/bookings/${bookingId}/update/`, {
+        status: newStatus
+      });
         await fetchBookings();
         setSuccess(`Booking status updated to ${newStatus} successfully!`);
         setShowConfirmModal(false);
-      } catch (err) {
-        console.error('Error updating booking:', err);
+    } catch (err) {
+      console.error('Error updating booking:', err);
         setError('Failed to update booking status. Please try again.');
       } finally {
         setIsUpdating(false);
-      }
+    }
     });
     setShowConfirmModal(true);
   };
@@ -138,13 +138,13 @@ const ManageBookings = () => {
   const handleDeleteBooking = async (bookingId) => {
     setConfirmAction(() => async () => {
       setIsDeleting(true);
-      try {
-        await api.delete(`admin/bookings/${bookingId}/delete/`);
+    try {
+      await api.delete(`admin/bookings/${bookingId}/delete/`);
         await fetchBookings();
         setSuccess('Booking deleted successfully!');
         setShowConfirmModal(false);
-      } catch (err) {
-        console.error('Error deleting booking:', err);
+    } catch (err) {
+      console.error('Error deleting booking:', err);
         setError('Failed to delete booking. Please try again.');
       } finally {
         setIsDeleting(false);
@@ -204,13 +204,13 @@ const ManageBookings = () => {
           
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <button
+          <button
               onClick={fetchBookings}
               className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 transition-all duration-300"
-            >
+          >
               <FaSearch className="text-sm" />
               <span>Refresh</span>
-            </button>
+          </button>
           </div>
         </div>
       </div>
@@ -367,7 +367,7 @@ const ManageBookings = () => {
           <div className="hidden lg:block overflow-x-auto">
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
               <table className="w-full">
-                <thead>
+              <thead>
                   <tr className="bg-gradient-to-r from-purple-50 to-violet-50 border-b border-purple-200">
                     <th className="p-4 text-left font-semibold text-slate-800">User</th>
                     <th className="p-4 text-left font-semibold text-slate-800">Bike</th>
@@ -376,19 +376,19 @@ const ManageBookings = () => {
                     <th className="p-4 text-left font-semibold text-slate-800">Total Price</th>
                     <th className="p-4 text-left font-semibold text-slate-800">Status</th>
                     <th className="p-4 text-left font-semibold text-slate-800">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBookings.map(booking => (
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBookings.map(booking => (
                     <tr key={booking.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors duration-200">
                       <td className="p-4">
                         <div>
                           <p className="font-medium text-slate-800">
-                            {booking.user?.username || booking.user?.email || 'Unknown User'}
+                      {booking.user?.username || booking.user?.email || 'Unknown User'}
                           </p>
                           <p className="text-sm text-slate-500">{booking.user?.email}</p>
                         </div>
-                      </td>
+                    </td>
                       <td className="p-4">
                         <div>
                           <p className="font-medium text-slate-800">
@@ -396,21 +396,31 @@ const ManageBookings = () => {
                           </p>
                           <p className="text-sm text-slate-500">{booking.bike?.bike_type}</p>
                         </div>
-                      </td>
+                    </td>
                       <td className="p-4">
                         <p className="text-sm text-slate-700">{formatDateTime(booking.start_time)}</p>
-                      </td>
+                    </td>
                       <td className="p-4">
-                        <p className="text-sm text-slate-700">{formatDateTime(booking.end_time)}</p>
-                      </td>
+                        <div>
+                          <p className="text-sm text-slate-700 font-medium">Booked: {formatDateTime(booking.booked_end_time)}</p>
+                          {booking.actual_end_time && (
+                            <p className="text-sm text-slate-500">Actual: {formatDateTime(booking.actual_end_time)}</p>
+                          )}
+                        </div>
+                    </td>
                       <td className="p-4">
-                        <p className="font-semibold text-green-600">Rs. {booking.total_price}</p>
-                      </td>
+                        <div>
+                          <p className="font-semibold text-green-600">Rs. {booking.actual_total_price || booking.total_price}</p>
+                          {booking.actual_total_price && booking.total_price !== booking.actual_total_price && (
+                            <p className="text-xs text-slate-500">Original: Rs. {booking.total_price}</p>
+                          )}
+                        </div>
+                    </td>
                       <td className="p-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                          {booking.status}
-                        </span>
-                      </td>
+                        {booking.status}
+                      </span>
+                    </td>
                       <td className="p-4">
                         <div className="flex items-center space-x-2">
                           <button
@@ -421,30 +431,30 @@ const ManageBookings = () => {
                             <FaEye className="text-sm" />
                           </button>
                           
-                          <select
-                            value={booking.status}
-                            onChange={(e) => handleStatusUpdate(booking.id, e.target.value)}
+                        <select
+                          value={booking.status}
+                          onChange={(e) => handleStatusUpdate(booking.id, e.target.value)}
                             className="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
                           
-                          <button
-                            onClick={() => handleDeleteBooking(booking.id)}
+                        <button
+                          onClick={() => handleDeleteBooking(booking.id)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
                             title="Delete Booking"
-                          >
+                        >
                             <FaTrash className="text-sm" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             </div>
           </div>
 
@@ -462,8 +472,13 @@ const ManageBookings = () => {
                     </p>
                     <div className="flex items-center space-x-4 text-sm text-slate-600">
                       <span>Start: {formatDateTime(booking.start_time)}</span>
-                      <span>End: {formatDateTime(booking.end_time)}</span>
+                      <span>Booked End: {formatDateTime(booking.booked_end_time)}</span>
                     </div>
+                    {booking.actual_end_time && (
+                      <div className="text-sm text-slate-500 mt-1">
+                        <span>Actual End: {formatDateTime(booking.actual_end_time)}</span>
+                      </div>
+                    )}
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
                     {booking.status}
@@ -473,7 +488,10 @@ const ManageBookings = () => {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-slate-500 text-sm">Total Price</p>
-                    <p className="font-semibold text-green-600 text-lg">Rs. {booking.total_price}</p>
+                    <p className="font-semibold text-green-600 text-lg">Rs. {booking.actual_total_price || booking.total_price}</p>
+                    {booking.actual_total_price && booking.total_price !== booking.actual_total_price && (
+                      <p className="text-xs text-slate-500">Original: Rs. {booking.total_price}</p>
+                    )}
                   </div>
                   
                   <div className="flex items-center space-x-2">

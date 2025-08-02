@@ -343,53 +343,67 @@ class BikeAdminViewSet(viewsets.ModelViewSet):
 class BookingCreateView(APIView):
     permission_classes = [IsAuthenticated, IsVerifiedUser]
 
-
     def post(self, request):
         data = request.data
         bike_id = data.get('bike')
         start_time = data.get('start_time')
-        end_time = data.get('end_time')
+        booked_end_time = data.get('booked_end_time')
 
-        if not all([bike_id, start_time, end_time]):
-            return Response({'error': 'Bike, start_time, and end_time are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not all([bike_id, start_time, booked_end_time]):
+            return Response({'error': 'Bike, start_time, and booked_end_time are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             bike = Bike.objects.get(id=bike_id)
         except Bike.DoesNotExist:
             return Response({'error': 'Bike not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        conflict = Booking.objects.filter(
-            bike=bike,
-            start_time__lt=end_time,
-            end_time__gt=start_time,
-            status__in=["pending", "confirmed"]
-        ).exists()
-
-        if conflict:
-            return Response({
-                'error': 'This bike is already booked for the selected time period. Please choose a different time or bike.',
-                'details': 'The bike has conflicting bookings during your selected time range.'
-            }, status=status.HTTP_409_CONFLICT)
-
+        # Validate start time and booked end time
         try:
             fmt_start = timezone.datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-            fmt_end = timezone.datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+            # Make sure fmt_start is timezone-aware
+            if fmt_start.tzinfo is None:
+                fmt_start = timezone.make_aware(fmt_start)
         except ValueError as e:
-            return Response({'error': f'Invalid datetime format: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        duration = (fmt_end - fmt_start).total_seconds() / 3600
-        if duration <= 0:
-            return Response({'error': 'Invalid time range.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': f'Invalid start time format: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-        total_price = round(duration * float(bike.price_per_hour), 2)
+        try:
+            fmt_booked_end = timezone.datetime.fromisoformat(booked_end_time.replace('Z', '+00:00'))
+            # Make sure fmt_booked_end is timezone-aware
+            if fmt_booked_end.tzinfo is None:
+                fmt_booked_end = timezone.make_aware(fmt_booked_end)
+        except ValueError as e:
+            return Response({'error': f'Invalid booked end time format: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if start time is in the past (with 5-minute buffer)
+        now = timezone.now()
+        buffer_time = now - timedelta(minutes=5)  # 5-minute buffer
+        if fmt_start < buffer_time:
+            return Response({'error': 'Start time cannot be more than 5 minutes in the past.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if start time is more than 36 hours in the future
+        max_booking_time = now + timedelta(hours=36)
+        if fmt_start > max_booking_time:
+            return Response({'error': 'Cannot book more than 36 hours in advance.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate that booked end time is after start time
+        if fmt_booked_end <= fmt_start:
+            return Response({'error': 'Booked end time must be after start time.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check for conflicts (simplified - just check if bike is available)
+        if bike.status != 'available':
+            return Response({
+                'error': 'This bike is not available for booking.',
+                'details': 'The bike is currently not available.'
+            }, status=status.HTTP_409_CONFLICT)
         
         try:
             booking = Booking.objects.create(
                 user=request.user,
                 bike=bike,
                 start_time=fmt_start,
-                end_time=fmt_end,
-                total_price=total_price,
+                booked_end_time=fmt_booked_end,  # User-selected end time
+                end_time=None,  # Legacy field (deprecated)
+                total_price=None,  # Will be calculated when ride ends
                 status='confirmed'
             )
             bike.status = 'booked'
@@ -572,19 +586,39 @@ class EndRideView(APIView):
             actual_duration_seconds = (actual_end_time - booking.start_time).total_seconds()
             actual_duration_hours = actual_duration_seconds / 3600
             
-            # Round up to next hour if more than 10 minutes over
-            minutes_over = (actual_duration_seconds % 3600) / 60
-            if minutes_over > 10:
-                actual_duration_hours = int(actual_duration_hours) + 1
-            else:
-                actual_duration_hours = int(actual_duration_hours)
+            # Calculate booked duration
+            booked_duration_seconds = (booking.booked_end_time - booking.start_time).total_seconds()
+            booked_duration_hours = booked_duration_seconds / 3600
             
-            # Calculate actual cost based on rounded duration
-            actual_total_price = Decimal(str(actual_duration_hours)) * booking.bike.price_per_hour
+            # Determine pricing based on new rules:
+            # If user ends BEFORE booked end time: Pay for booked duration
+            # If user ends AFTER booked end time: Pay for actual duration
+            if actual_end_time <= booking.booked_end_time:
+                # User ended early or on time - pay for booked duration
+                final_duration_hours = booked_duration_hours
+                pricing_rule = "booked_duration"
+            else:
+                # User ended late - pay for actual duration
+                final_duration_hours = actual_duration_hours
+                pricing_rule = "actual_duration"
+            
+            # Round up to next hour if more than 10 minutes over
+            minutes_over = (final_duration_hours * 3600) % 3600 / 60
+            if minutes_over > 10:
+                final_duration_hours = int(final_duration_hours) + 1
+            else:
+                final_duration_hours = int(final_duration_hours)
+            
+            # Ensure minimum 1 hour charge
+            if final_duration_hours < 1:
+                final_duration_hours = 1
+            
+            # Calculate final cost
+            final_total_price = Decimal(str(final_duration_hours)) * booking.bike.price_per_hour
             
             # Update booking with actual end time and cost
             booking.actual_end_time = actual_end_time
-            booking.actual_total_price = actual_total_price
+            booking.actual_total_price = final_total_price
             booking.status = 'completed'
             booking.bike.status = 'available'  # Make bike immediately available
             booking.bike.save()
@@ -592,18 +626,17 @@ class EndRideView(APIView):
             
             return Response({
                 'message': 'Ride ended successfully. Bike is now available.',
+                'booking_id': booking.id,
+                'bike_id': booking.bike.id,
+                'bike_name': booking.bike.name,
                 'actual_end_time': actual_end_time,
-                'actual_duration_hours': actual_duration_hours,
-                'actual_total_price': int(actual_total_price),
-                'original_total_price': int(booking.total_price),
-                'price_per_hour': int(booking.bike.price_per_hour),
                 'cost_breakdown': {
-                    'original_booking_hours': round((booking.end_time - booking.start_time).total_seconds() / 3600, 2),
-                    'actual_ride_hours': actual_duration_hours,
+                    'booked_duration_hours': round(booked_duration_hours, 2),
+                    'actual_duration_hours': round(actual_duration_hours, 2),
+                    'final_duration_hours': final_duration_hours,
                     'price_per_hour': int(booking.bike.price_per_hour),
-                    'original_cost': int(booking.total_price),
-                    'actual_cost': int(actual_total_price),
-                    'difference': int(actual_total_price - booking.total_price)
+                    'final_cost': int(final_total_price),
+                    'pricing_rule': pricing_rule
                 }
             }, status=status.HTTP_200_OK)
         except Exception as e:

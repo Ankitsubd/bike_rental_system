@@ -184,6 +184,7 @@ class BookingSerializer(serializers.ModelSerializer):
     price_per_hour = serializers.DecimalField(source='bike.price_per_hour', read_only=True, max_digits=10, decimal_places=2)
     actual_duration_hours = serializers.SerializerMethodField()
     original_duration_hours = serializers.SerializerMethodField()
+    booked_duration_hours = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -214,6 +215,10 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def get_original_duration_hours(self, obj):
         try:
+            # Check if end_time exists (it can be None for new bookings)
+            if not obj.end_time:
+                return None
+                
             # Ensure we're working with datetime objects
             if isinstance(obj.end_time, str):
                 from django.utils.dateparse import parse_datetime
@@ -232,16 +237,41 @@ class BookingSerializer(serializers.ModelSerializer):
         except (TypeError, ValueError):
             return None
 
+    def get_booked_duration_hours(self, obj):
+        try:
+            # Check if booked_end_time exists
+            if not obj.booked_end_time:
+                return None
+                
+            # Ensure we're working with datetime objects
+            if isinstance(obj.booked_end_time, str):
+                from django.utils.dateparse import parse_datetime
+                booked_end = parse_datetime(obj.booked_end_time)
+            else:
+                booked_end = obj.booked_end_time
+            
+            if isinstance(obj.start_time, str):
+                from django.utils.dateparse import parse_datetime
+                start = parse_datetime(obj.start_time)
+            else:
+                start = obj.start_time
+            
+            duration = (booked_end - start).total_seconds() / 3600
+            return round(duration, 2)
+        except (TypeError, ValueError):
+            return None
+
     def validate(self, data):
         bike = data.get('bike')
         start_time = data.get('start_time')
-        end_time = data.get('end_time')
+        booked_end_time = data.get('booked_end_time')
 
         if bike and bike.status != 'available':
             raise serializers.ValidationError("This bike is not available for booking.")
 
-        if start_time and end_time and start_time >= end_time:
-            raise serializers.ValidationError("End time must be after start time.")
+        # Validate booked_end_time if provided
+        if start_time and booked_end_time and start_time >= booked_end_time:
+            raise serializers.ValidationError("Booked end time must be after start time.")
 
         return data
 
@@ -252,10 +282,11 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     price_per_hour = serializers.DecimalField(source='bike.price_per_hour', read_only=True, max_digits=10, decimal_places=2)
     actual_duration_hours = serializers.SerializerMethodField()
     original_duration_hours = serializers.SerializerMethodField()
+    booked_duration_hours = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
-        fields = ['id', 'user', 'bike', 'start_time', 'end_time', 'actual_end_time', 'total_price', 'actual_total_price', 'status', 'created_at', 'price_per_hour', 'actual_duration_hours', 'original_duration_hours']
+        fields = ['id', 'user', 'bike', 'start_time', 'booked_end_time', 'end_time', 'actual_end_time', 'total_price', 'actual_total_price', 'status', 'created_at', 'price_per_hour', 'actual_duration_hours', 'original_duration_hours', 'booked_duration_hours']
 
     def get_actual_duration_hours(self, obj):
         if obj.actual_end_time:
@@ -281,6 +312,10 @@ class AdminBookingSerializer(serializers.ModelSerializer):
 
     def get_original_duration_hours(self, obj):
         try:
+            # Check if end_time exists (it can be None for new bookings)
+            if not obj.end_time:
+                return None
+                
             # Ensure we're working with datetime objects
             if isinstance(obj.end_time, str):
                 from django.utils.dateparse import parse_datetime
@@ -299,12 +334,36 @@ class AdminBookingSerializer(serializers.ModelSerializer):
         except (TypeError, ValueError):
             return None
 
+    def get_booked_duration_hours(self, obj):
+        try:
+            # Check if booked_end_time exists
+            if not obj.booked_end_time:
+                return None
+                
+            # Ensure we're working with datetime objects
+            if isinstance(obj.booked_end_time, str):
+                from django.utils.dateparse import parse_datetime
+                booked_end = parse_datetime(obj.booked_end_time)
+            else:
+                booked_end = obj.booked_end_time
+            
+            if isinstance(obj.start_time, str):
+                from django.utils.dateparse import parse_datetime
+                start = parse_datetime(obj.start_time)
+            else:
+                start = obj.start_time
+            
+            duration = (booked_end - start).total_seconds() / 3600
+            return round(duration, 2)
+        except (TypeError, ValueError):
+            return None
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only=True)
     bike_name = serializers.CharField(source='bike.name', read_only=True)
     user = UserSerializer(read_only=True)
-    bike = BikeSerializer(read_only=True)
+    bike_detail = BikeSerializer(source='bike', read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
 
     class Meta:

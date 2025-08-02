@@ -1,19 +1,20 @@
 
 import React, { useState, useContext, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import useLogout from '../hooks/useLogout';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true); // Start visible
   const [lastScrollY, setLastScrollY] = useState(0);
   const authContext = useContext(AuthContext);
   const location = useLocation();
-  const navigate = useNavigate();
+  const { logoutWithRedirect } = useLogout();
 
   // Safely destructure with fallbacks
-  const { user = null, logout = () => {}, loading = false } = authContext || {};
+  const { user = null, loading = false } = authContext || {};
 
   // Scroll detection
   useEffect(() => {
@@ -27,14 +28,14 @@ const Navbar = () => {
         clearTimeout(timeoutId);
       }
       
-      // Show navbar when scrolling down, hide when scrolling up
-      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+      // Show navbar when scrolling up or at top, hide when scrolling down significantly
+      if (currentScrollY < lastScrollY || currentScrollY < 100) {
         setIsVisible(true);
-      } else if (currentScrollY < lastScrollY) {
+      } else if (currentScrollY > lastScrollY && currentScrollY > 200) {
         // Add small delay when hiding to prevent flickering
         timeoutId = setTimeout(() => {
           setIsVisible(false);
-        }, 100);
+        }, 150);
       }
       
       setLastScrollY(currentScrollY);
@@ -63,7 +64,7 @@ const Navbar = () => {
   // Always render navbar, even during loading
   return (
     <nav 
-      className={`bg-white shadow-lg z-50 border-b border-slate-200 transition-transform duration-300 ${
+      className={`bg-white/95 backdrop-blur-sm shadow-lg z-50 border-b border-slate-200 transition-transform duration-300 ${
         isVisible ? 'translate-y-0' : '-translate-y-full'
       }`} 
       style={{ 
@@ -177,7 +178,7 @@ const Navbar = () => {
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
-                          logout();
+                          logoutWithRedirect();
                         }}
                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-300"
                       >
@@ -286,7 +287,7 @@ const Navbar = () => {
                   <button
                     onClick={() => {
                       setIsOpen(false);
-                      logout();
+                      logoutWithRedirect();
                     }}
                     className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 transition-colors duration-300"
                   >

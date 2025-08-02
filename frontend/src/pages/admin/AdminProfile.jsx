@@ -165,7 +165,7 @@ const AdminProfile = () => {
           <p className="text-green-700">{success}</p>
         </div>
       )}
-
+      
       {user ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Profile Information */}
@@ -180,8 +180,8 @@ const AdminProfile = () => {
             </div>
 
             <form onSubmit={handleProfileSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Username</label>
                   <input
                     type="text"
@@ -261,7 +261,7 @@ const AdminProfile = () => {
 
             {showPasswordForm ? (
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                <div>
+            <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Current Password</label>
                   <div className="relative">
                     <input
@@ -280,9 +280,9 @@ const AdminProfile = () => {
                       )}
                     </span>
                   </div>
-                </div>
+            </div>
                 
-                <div>
+            <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
                   <div className="relative">
                     <input
@@ -303,9 +303,9 @@ const AdminProfile = () => {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">Minimum 8 characters</p>
-                </div>
+            </div>
                 
-                <div>
+            <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Confirm New Password</label>
                   <div className="relative">
                     <input
@@ -323,9 +323,9 @@ const AdminProfile = () => {
                         <FaEye className="text-slate-500" onClick={() => setShowConfirmPassword(true)} />
                       )}
                     </span>
-                  </div>
-                </div>
-
+            </div>
+          </div>
+          
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -356,14 +356,14 @@ const AdminProfile = () => {
                 </div>
                 
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h3 className="font-semibold text-blue-800 mb-2">Admin Permissions</h3>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Manage all bikes (add, edit, delete)</li>
-                    <li>• View and manage all bookings</li>
-                    <li>• Moderate user reviews</li>
-                    <li>• Access admin dashboard</li>
-                    <li>• View system statistics</li>
-                  </ul>
+            <h3 className="font-semibold text-blue-800 mb-2">Admin Permissions</h3>
+            <ul className="text-sm text-blue-700 space-y-1">
+              <li>• Manage all bikes (add, edit, delete)</li>
+              <li>• View and manage all bookings</li>
+              <li>• Moderate user reviews</li>
+              <li>• Access admin dashboard</li>
+              <li>• View system statistics</li>
+            </ul>
                 </div>
               </div>
             )}

@@ -181,28 +181,28 @@ const RentalHistory = () => {
                     <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
                       <div className="flex items-center gap-3 mb-2">
                         <FaClock className="text-green-600" />
-                        <p className="text-sm text-gray-600">End Time</p>
+                        <p className="text-sm text-gray-600">Actual End Time</p>
                       </div>
-                      <p className="font-bold text-gray-800">{formatDate(booking.end_time)}</p>
+                      <p className="font-bold text-gray-800">{formatDate(booking.actual_end_time)}</p>
                     </div>
                     
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
                       <div className="flex items-center gap-3 mb-2">
                         <FaClock className="text-purple-600" />
-                        <p className="text-sm text-gray-600">Duration</p>
+                        <p className="text-sm text-gray-600">Actual Duration</p>
                       </div>
                       <p className="font-bold text-gray-800">
-                        {calculateDuration(booking.start_time, booking.end_time)} hours
+                        {calculateDuration(booking.start_time, booking.actual_end_time)} hours
                       </p>
                     </div>
                     
                     <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 border border-orange-100">
                       <div className="flex items-center gap-3 mb-2">
                         <FaDollarSign className="text-orange-600" />
-                        <p className="text-sm text-gray-600">Total Price</p>
+                        <p className="text-sm text-gray-600">Actual Total Price</p>
                       </div>
                       <p className="font-bold text-green-600">
-                        Rs. {booking.total_price || 'N/A'}
+                        Rs. {booking.actual_total_price || 'N/A'}
                       </p>
                     </div>
                   </div>

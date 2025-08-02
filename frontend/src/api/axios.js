@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import { refreshToken } from '../utils/tokenRefresh';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1/',
+    baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1/',
   // Remove default Content-Type to let it be set dynamically
 });
 
@@ -102,7 +102,7 @@ api.interceptors.request.use(async (req) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+        const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       // Check if we're already on login page to avoid redirect loops
@@ -168,7 +168,7 @@ api.interceptors.response.use(
           
           // Retry the original request
           originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
-          return api(originalRequest);
+                return api(originalRequest);
         } else {
           // Refresh failed, clear auth data but don't redirect immediately
           console.log('Token refresh failed, clearing auth data');

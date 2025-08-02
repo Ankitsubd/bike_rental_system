@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import api from '../../api/axios';
 import Spinner from '../../components/Spinner';
-import { FaCheckCircle, FaClock, FaBicycle, FaStar, FaArrowLeft, FaInfoCircle, FaCog, FaPhone, FaEnvelope, FaMapMarkerAlt, FaCalendarAlt, FaDollarSign } from 'react-icons/fa';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import { FaCheckCircle, FaClock, FaBicycle, FaStar, FaArrowLeft, FaInfoCircle, FaCog, FaPhone, FaEnvelope, FaMapMarkerAlt, FaCalendarAlt, FaDollarSign, FaComments } from 'react-icons/fa';
 
 const BikeDetail = () => {
   const { id } = useParams();
@@ -12,15 +13,23 @@ const BikeDetail = () => {
   const [bike, setBike] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bookingData, setBookingData] = useState({ start_time: '', end_time: '' });
-  const [price, setPrice] = useState(0);
+  const [bookingData, setBookingData] = useState({ start_time: '', booked_end_time: '' });
   const [message, setMessage] = useState('');
   const [isAvailable, setIsAvailable] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [showBookingSuccess, setShowBookingSuccess] = useState(false);
 
   useEffect(() => {
     fetchBike();
   }, [id]);
+
+  useEffect(() => {
+    if (bike) {
+      fetchReviews();
+    }
+  }, [bike]);
 
   const fetchBike = async () => {
     try {
@@ -37,16 +46,30 @@ const BikeDetail = () => {
     }
   };
 
-  const calculatePrice = (start, end) => {
-    if (!start || !end) {
-      setPrice(0);
-      return;
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const response = await api.get(`reviews/?bike=${id}`);
+      setReviews(response.data);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setReviewsLoading(false);
     }
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const diffHours = Math.ceil((endDate - startDate) / (1000 * 60 * 60));
-    const calculatedPrice = diffHours * bike.price_per_hour;
-    setPrice(calculatedPrice);
+  };
+
+  const getMinDateTime = () => {
+    const now = new Date();
+    const bufferTime = new Date(now.getTime() - 5 * 60 * 1000); // 5 minutes ago
+    const localDateTime = new Date(bufferTime.getTime() - bufferTime.getTimezoneOffset() * 60000);
+    return localDateTime.toISOString().slice(0, 16);
+  };
+
+  const getMaxDateTime = () => {
+    const now = new Date();
+    const maxTime = new Date(now.getTime() + 36 * 60 * 60 * 1000); // 36 hours from now
+    const localDateTime = new Date(maxTime.getTime() - maxTime.getTimezoneOffset() * 60000);
+    return localDateTime.toISOString().slice(0, 16);
   };
 
   const handleBooking = async (e) => {
@@ -58,28 +81,34 @@ const BikeDetail = () => {
       return;
     }
 
-    if (!bookingData.start_time || !bookingData.end_time) {
-      setMessage('Please select both start and end times.');
+    if (!bookingData.start_time || !bookingData.booked_end_time) {
+      setMessage('Please select both start time and end time.');
       return;
     }
 
     const startDate = new Date(bookingData.start_time);
-    const endDate = new Date(bookingData.end_time);
-    if (endDate < startDate) {
-      setMessage('End time cannot be before start time.');
+    const endDate = new Date(bookingData.booked_end_time);
+    const now = new Date();
+    const bufferTime = new Date(now.getTime() - 5 * 60 * 1000); // 5 minutes ago
+    
+    if (startDate < bufferTime) {
+      setMessage('Start time cannot be more than 5 minutes in the past.');
+      return;
+    }
+
+    if (endDate <= startDate) {
+      setMessage('End time must be after start time.');
       return;
     }
 
     try {
-      await api.post('book/', { bike: id, ...bookingData });
-      setMessage('Booking successful! Redirecting to My Bookings...');
-      setBookingData({ start_time: '', end_time: '' });
-      setPrice(0);
-      
-      // Redirect to My Bookings page after successful booking
-      setTimeout(() => {
-        navigate('/user/bookings');
-      }, 1500);
+      await api.post('book/', { 
+        bike: id, 
+        start_time: bookingData.start_time,
+        booked_end_time: bookingData.booked_end_time
+      });
+      setBookingData({ start_time: '', booked_end_time: '' });
+      setShowBookingSuccess(true);
     } catch (err) {
       if (err.response?.status === 409) {
         setMessage('This bike is already booked for the selected time period. Please choose a different time or bike.');
@@ -223,6 +252,7 @@ const BikeDetail = () => {
               {[
                 { key: 'details', label: 'Details', icon: <FaInfoCircle className="w-4 h-4" /> },
                 { key: 'specs', label: 'Specifications', icon: <FaCog className="w-4 h-4" /> },
+                { key: 'reviews', label: 'Reviews', icon: <FaComments className="w-4 h-4" /> },
                 { key: 'contact', label: 'Contact', icon: <FaPhone className="w-4 h-4" /> }
               ].map((tab) => (
                 <button
@@ -336,6 +366,66 @@ const BikeDetail = () => {
               </div>
             )}
 
+            {activeTab === 'reviews' && (
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <FaComments className="w-5 h-5 text-blue-600" />
+                  Customer Reviews
+                </h3>
+                
+                {reviewsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading reviews...</p>
+                  </div>
+                ) : reviews.length > 0 ? (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                              {review.user_name?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-800">{review.user_name || 'Anonymous'}</p>
+                              <p className="text-sm text-gray-500">
+                                {new Date(review.created_at).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, index) => (
+                              <FaStar
+                                key={index}
+                                className={`w-4 h-4 ${
+                                  index < review.rating ? 'text-yellow-500' : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                            <span className="ml-2 text-sm font-semibold text-gray-600">
+                              {review.rating}/5
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">{review.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-6xl mb-4">💬</div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">No Reviews Yet</h4>
+                    <p className="text-gray-600">Be the first to review this bike!</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Enhanced Booking Form */}
             {isAvailableForBooking ? (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
@@ -343,53 +433,63 @@ const BikeDetail = () => {
                   Book This Bike
                 </h3>
                 <form onSubmit={handleBooking} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        <FaCalendarAlt className="w-4 h-4 text-blue-600" />
-                        Start Time
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={bookingData.start_time}
-                        onChange={(e) => {
-                          setBookingData({ ...bookingData, start_time: e.target.value });
-                          calculatePrice(e.target.value, bookingData.end_time);
-                        }}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        <FaCalendarAlt className="w-4 h-4 text-blue-600" />
-                        End Time
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={bookingData.end_time}
-                        onChange={(e) => {
-                          setBookingData({ ...bookingData, end_time: e.target.value });
-                          calculatePrice(bookingData.start_time, e.target.value);
-                        }}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                        required
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <FaCalendarAlt className="w-4 h-4 text-blue-600" />
+                      Start Date & Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={bookingData.start_time}
+                      onChange={(e) => {
+                        setBookingData({ ...bookingData, start_time: e.target.value });
+                      }}
+                      min={getMinDateTime()}
+                      max={getMaxDateTime()}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                      required
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Select a time within 36 hours from now
+                    </p>
                   </div>
 
-                  {price > 0 && (
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600 font-medium flex items-center gap-2">
-                          <FaDollarSign className="w-4 h-4 text-blue-600" />
-                          Total Price:
-                        </span>
-                        <span className="text-2xl font-bold text-blue-600">Rs. {price}</span>
-                      </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <FaCalendarAlt className="w-4 h-4 text-green-600" />
+                      End Date & Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={bookingData.booked_end_time}
+                      onChange={(e) => {
+                        setBookingData({ ...bookingData, booked_end_time: e.target.value });
+                      }}
+                      min={bookingData.start_time || getMinDateTime()}
+                      max={getMaxDateTime()}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+                      required
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Select when you want to end your ride
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 font-medium flex items-center gap-2">
+                        <FaInfoCircle className="w-4 h-4 text-green-600" />
+                        Pricing Information:
+                      </span>
                     </div>
-                  )}
+                    <div className="mt-2 text-sm text-gray-600">
+                      <p>• Price per hour: <span className="font-semibold">Rs. {bike.price_per_hour}</span></p>
+                      <p>• Minimum charge: <span className="font-semibold">1 hour</span></p>
+                      <p>• If you end early: Pay for <span className="font-semibold">booked duration</span></p>
+                      <p>• If you end late: Pay for <span className="font-semibold">actual duration</span></p>
+                      <p>• Final cost calculated when ride ends</p>
+                    </div>
+                  </div>
 
                   {message && (
                     <div className={`p-4 rounded-xl transition-all duration-300 ${
@@ -419,6 +519,30 @@ const BikeDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Booking Success Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showBookingSuccess}
+        onClose={() => setShowBookingSuccess(false)}
+        onConfirm={() => {
+          setShowBookingSuccess(false);
+          navigate('/user/bookings');
+        }}
+        title="🎉 Booking Successful!"
+        message="Your booking has been confirmed! Here are the important rules to remember:
+
+• Start and end times cannot be changed once booked
+• If you end early: Pay for booked duration
+• If you end late: Pay for actual duration
+• Minimum charge is 1 hour regardless of actual ride time
+• Final cost is calculated when you end your ride
+• You can start your ride anytime after your booked start time
+
+Click 'OK' to view your bookings."
+        confirmText="OK, Got It!"
+        cancelText="Close"
+        type="success"
+      />
     </div>
   );
 };

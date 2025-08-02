@@ -103,17 +103,17 @@ export default function UserDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-cyan-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-slate-800 mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-800 mb-2">
             Welcome back, {profile.name || user?.username || 'User'}! 👋
           </h1>
-          <p className="text-xl text-slate-600">
+          <p className="text-sm sm:text-lg lg:text-xl text-slate-600">
             Manage your bike rentals and profile information
           </p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
             <div className="flex items-center">
               <div className="w-12 h-12 bg-sky-100 rounded-xl flex items-center justify-center">
@@ -163,7 +163,7 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* Profile Section */}
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200">
             <div className="p-6 border-b border-slate-200">

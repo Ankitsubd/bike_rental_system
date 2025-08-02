@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import useLogout from '../hooks/useLogout';
 
 const AdminLayout = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { logoutWithRedirect } = useLogout();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    logoutWithRedirect();
   };
 
   const isActive = (path) => {

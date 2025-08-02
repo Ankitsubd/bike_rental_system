@@ -60,17 +60,17 @@ const AdminHome = () => {
   return (
     <div className="space-y-10">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-200/60 rounded-3xl shadow-xl p-10">
-        <div className="flex items-center space-x-6 mb-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center border border-emerald-200/50 shadow-lg">
-            <span className="text-emerald-600 text-4xl">🚲</span>
+      <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-200/60 rounded-3xl shadow-xl p-4 sm:p-6 lg:p-10">
+        <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-6">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center border border-emerald-200/50 shadow-lg">
+            <span className="text-emerald-600 text-2xl sm:text-4xl">🚲</span>
           </div>
-          <div>
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
+          <div className="text-center sm:text-left">
+            <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
               Welcome back, {user?.username || user?.email}!
             </h1>
-            <p className="text-xl text-slate-600 font-medium mb-2">Manage your bike rental system with ease and precision</p>
-            <p className="text-lg text-slate-500 font-medium">
+            <p className="text-sm sm:text-lg lg:text-xl text-slate-600 font-medium mb-2">Manage your bike rental system with ease and precision</p>
+            <p className="text-xs sm:text-sm lg:text-lg text-slate-500 font-medium">
               {new Date().toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -80,15 +80,15 @@ const AdminHome = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
           <div className="flex items-center space-x-3 text-slate-500">
             <div className={`w-3 h-3 bg-${systemStatus.status_color}-400 rounded-full animate-pulse shadow-sm`}></div>
-            <span className="text-sm font-medium">
+            <span className="text-xs sm:text-sm font-medium">
               System Status: {systemStatus.overall_status}
             </span>
           </div>
           {systemStatus.components && (
-            <div className="flex items-center space-x-4 text-xs text-slate-400">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-slate-400">
               <span>DB: {systemStatus.components.database}</span>
               <span>Server: {systemStatus.components.server}</span>
               {systemStatus.components.errors > 0 && (
@@ -102,12 +102,12 @@ const AdminHome = () => {
 
 
       {/* Revenue Summary */}
-      <div className="bg-gradient-to-br from-white to-amber-50/50 border border-amber-200/60 rounded-3xl shadow-xl p-8">
-        <div className="flex items-center space-x-3 mb-6">
-          <FaMoneyBillWave className="text-amber-600 text-2xl" />
-          <h3 className="text-2xl font-bold text-slate-800">Revenue Summary</h3>
+      <div className="bg-gradient-to-br from-white to-amber-50/50 border border-amber-200/60 rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8">
+        <div className="flex items-center space-x-3 mb-4 sm:mb-6">
+          <FaMoneyBillWave className="text-amber-600 text-xl sm:text-2xl" />
+          <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800">Revenue Summary</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="text-center p-6 bg-white rounded-2xl border border-amber-200/50 shadow-lg">
             <p className="text-sm text-amber-600 font-semibold mb-2">Total Revenue</p>
             <p className="text-3xl font-bold text-amber-800">Rs. {stats?.total_revenue || 0}</p>
